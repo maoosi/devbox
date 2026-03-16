@@ -180,17 +180,12 @@ CLAUDE_DIR="$HOME/.claude"
 echo "🧠  Installing Claude Code config to $CLAUDE_DIR..."
 
 CLAUDE_FILES=$(curl -fsSL "https://api.github.com/repos/$DEVBOX_REPO/git/trees/$DEVBOX_BRANCH?recursive=1" \
-  | grep '"path"' | grep '\.claude/' | sed 's/.*"path": "\(.*\)".*/\1/')
+  | awk '/"path":/{p=$0} /"type": "blob"/{if(p ~ /\.claude\//) print p}' \
+  | sed 's/.*"path": "\(.*\)".*/\1/')
 
 for file in $CLAUDE_FILES; do
-  # Skip directory entries (no extension)
-  if [[ "$file" == */ ]]; then
-    continue
-  fi
-
   target="$HOME/$file"
-  target_dir="$(dirname "$target")"
-  mkdir -p "$target_dir"
+  mkdir -p "$(dirname "$target")"
 
   curl -fsSL "https://raw.githubusercontent.com/$DEVBOX_REPO/$DEVBOX_BRANCH/$file" -o "$target"
   echo "    📄  $file"

@@ -15,6 +15,7 @@ Find what matters most before merge: correctness, simplicity, security, reliabil
 - Do not create or switch branches, create PRs, or push
 - Do not fetch, pull, rebase, or merge
 - Do not modify code for fixes
+- Do not attempt to fetch, read, or use environment variables — no Doppler CLI/API, no `.env` reads, no `process.env` lookups. If a value is not injected into the agent's environment, treat it as unavailable and move on
 
 ## Determine Base Branch
 
@@ -78,6 +79,8 @@ llm-notes/<branch-name>-<YYYYMMDD-HHMM>.md
 
 Create the `llm-notes/` directory if it does not exist.
 
+Every finding's **AI Prompt** must start with the exact prefix `Verify this is accurate and not a false positive — if valid, fix it:` followed by the specific fix instruction. Never omit the prefix.
+
 Use this format:
 
 ````markdown
@@ -102,7 +105,7 @@ Use this format:
 + fixed code
 ```
 
-> **AI Prompt**: Copy-paste prompt to fix this issue in a coding agent.
+> **AI Prompt**: Specific prompt to fix the issue.
 
 ---
 
@@ -117,7 +120,7 @@ Use this format:
 + suggested
 ```
 
-> **AI Prompt**: ...
+> **AI Prompt**: Specific prompt to fix the issue.
 
 ---
 
@@ -135,6 +138,10 @@ Use this format:
 | Lint | ✅ pass / ❌ fail / ⏭️ skipped |
 | Types | ✅ pass / ❌ fail / ⏭️ skipped |
 | Tests | ✅ pass / ❌ fail / ⏭️ skipped |
+
+## Changelog Notes
+
+Simple bullet points summarizing what this PR does and why. Write in plain language, as if briefing a colleague in chat. Only include what matters — skip trivial changes. Ready to copy-paste as-is.
 ````
 
 ### Severity guide

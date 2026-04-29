@@ -1,0 +1,39 @@
+# Devbox conventions for {{REPO}}
+
+This devbox is dedicated to **{{REPO}}** only. Tokens and tools are scoped accordingly.
+
+## GitHub
+
+`gh` uses `GH_TOKEN` (a fine-grained PAT scoped to this repo). The `github` MCP server is wired with the same token — prefer it over copy-paste:
+
+- `get_pull_request` / `get_pull_request_comments` / `list_review_comments` for PR context.
+- `get_file_contents` to read files at a specific ref.
+
+When the user mentions a PR or comment, fetch through MCP rather than asking them to paste.
+
+## Browser
+
+If `agent-browser` is installed:
+
+```
+agent-browser open http://localhost:3000
+agent-browser snapshot -i --json
+agent-browser console --json
+agent-browser network requests --json
+```
+
+Use it to verify UI changes and inspect console errors before reporting work as done.
+
+## Package installs
+
+- `npm`, `pnpm`, `yarn`, `pip`, `uv`, `cargo` are aliased through `sfw` (Socket Firewall) — known-malicious packages are blocked.
+- `ignore-scripts=true` is set globally. If a package needs scripts, run it explicitly: `pnpm install --ignore-scripts=false <pkg>`.
+- `bun install` is not wrapped — prefer pnpm where you have a choice.
+
+## Secrets
+
+The active secrets manager (Doppler or Infisical) is scoped to this project's dev environment via a read-only service token. Don't try to switch projects, log in to a different account, or read `~/.config/devbox/env` directly.
+
+## Denied actions
+
+`git push --force`, `git reset --hard`, `git clean -fd`, and `npm publish` are denied by global Claude settings. If the user genuinely needs one of these, they'll run it themselves.

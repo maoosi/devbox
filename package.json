@@ -1,0 +1,21 @@
+{
+  "name": "devbox",
+  "version": "2.0.0",
+  "description": "Per-project devbox installer for Claude Code agents on Orbstack.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "devbox": "src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "start": "bun src/cli.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.4.0"
+  }
+}

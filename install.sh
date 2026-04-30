@@ -31,10 +31,9 @@ curl -fsSL "${RAW}/tsconfig.json" -o tsconfig.json
 for f in cli.ts exec.ts env.ts dryrun.ts; do
   curl -fsSL "${RAW}/src/${f}" -o "src/${f}"
 done
-for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo skills; do
+for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo skills conventions; do
   curl -fsSL "${RAW}/src/tools/${f}.ts" -o "src/tools/${f}.ts"
 done
-curl -fsSL "${RAW}/templates/CLAUDE.md.tmpl" -o templates/CLAUDE.md.tmpl
 # Skills shipped onto every devbox. Keep in sync with SHIPPED_SKILLS in src/tools/skills.ts.
 for s in code-review; do
   mkdir -p "templates/skills/${s}"

@@ -16,6 +16,9 @@ export type Ctx = {
   exports: string[];
   aliases: string[];
   mcpServers: Record<string, McpServer>;
+  // Ids of all tools that will run in this install. Populated by cli.ts before
+  // the loop so late tools (e.g. conventions) can gate sections on what's installed.
+  selectedToolIds: Set<string>;
 };
 
 export type Tool = {
@@ -40,10 +43,12 @@ import ignoreScripts from "./ignore-scripts.ts";
 import mcp from "./mcp.ts";
 import repo from "./repo.ts";
 import skills from "./skills.ts";
+import conventions from "./conventions.ts";
 
-// Order matters: claude runs last so ctx.mcpServers is populated when it
-// writes ~/.claude/settings.json. Repo cloning needs ctx.tokens.GH_TOKEN, so
-// github runs before repo.
+// Order matters:
+//   - github runs before repo (clone needs ctx.tokens.GH_TOKEN).
+//   - claude runs after mcp so ctx.mcpServers is populated when it writes settings.json.
+//   - conventions runs last — it reads ctx.selectedToolIds to gate AGENTS.md sections.
 export const tools: Tool[] = [
   system,
   runtimes,
@@ -58,6 +63,7 @@ export const tools: Tool[] = [
   repo,
   skills,
   claude,
+  conventions,
 ];
 
 // Resolves which tools to actually run, given:

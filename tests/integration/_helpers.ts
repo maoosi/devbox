@@ -90,6 +90,7 @@ export function makeCtx(overrides: Partial<Ctx> = {}): Ctx {
     exports: [],
     aliases: [],
     mcpServers: {},
+    selectedToolIds: new Set<string>(),
     ...overrides,
   };
 }

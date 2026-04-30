@@ -147,6 +147,7 @@ async function main(): Promise<void> {
     exports: [],
     aliases: [],
     mcpServers: {},
+    selectedToolIds: new Set(selected.map((t) => t.id)),
   };
 
   for (const tool of selected) {

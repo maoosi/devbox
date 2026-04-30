@@ -15,7 +15,7 @@ const fixture: Tool[] = [
   { id: "ignore-scripts",label: "ignore-scripts",default: true,  required: true,  run: noop },
   { id: "mcp",           label: "mcp",           default: true,  required: true,  run: noop },
   { id: "repo",          label: "repo",          default: true,  required: true,  run: noop },
-  { id: "claude",        label: "claude",        default: true,  required: true,  run: noop },
+  { id: "claude",        label: "claude",        default: true,  required: false, run: noop },
 ];
 
 const ids = (ts: Tool[]) => ts.map((t) => t.id);

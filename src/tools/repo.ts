@@ -9,7 +9,8 @@ import type { Tool, GitWritePolicy } from "./index.ts";
 export function prePushHook(policy: GitWritePolicy): string {
   return `#!/bin/sh
 # Installed by devbox install. Reflects this devbox's git policy.
-# Bypassing requires \`--no-verify\`, which is denied at the Claude layer.
+# Bypassing requires \`--no-verify\`, which is denied at the agent layer
+# (when an agent CLI like Claude Code is installed).
 ALLOW_MAIN=${policy.pushMain ? 1 : 0}
 ALLOW_DELETE=${policy.deleteBranches ? 1 : 0}
 DEFAULT_BRANCH="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')"

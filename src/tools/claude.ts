@@ -76,12 +76,14 @@ async function writeSettings(
   await fs.writeFile(settingsPath(), JSON.stringify(settings, null, 2) + "\n");
 }
 
-// Runs last so ctx.mcpServers (populated by other tools) is final by now.
+// Optional: pick the agent CLI you want. Default on so the common case is
+// one prompt away. Runs after the other tools so ctx.mcpServers is final
+// when settings.json is written.
 const tool: Tool = {
   id: "claude",
   label: "Claude Code",
   default: true,
-  required: true,
+  required: false,
   async run(ctx) {
     await sh(
       "bun install -g @anthropic-ai/claude-code || npm install -g @anthropic-ai/claude-code",

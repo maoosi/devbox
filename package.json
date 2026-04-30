@@ -1,7 +1,7 @@
 {
   "name": "devbox",
   "version": "2.0.0",
-  "description": "Per-project devbox installer for Claude Code agents on Orbstack.",
+  "description": "Per-project Orbstack devbox for running AI agents safely.",
   "type": "module",
   "private": true,
   "bin": {

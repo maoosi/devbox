@@ -170,14 +170,17 @@ async function main(): Promise<void> {
   await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
 
   // Final manual step: claude login (Anthropic OAuth — no API alternative).
-  p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
-  if (!isDryRun()) {
-    const code = await runInteractive("claude", ["login"]);
-    if (code !== 0) {
-      p.log.warn("`claude login` did not complete. Run it manually later.");
+  // Only when Claude Code was actually installed.
+  if (selected.some((t) => t.id === "claude")) {
+    p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
+    if (!isDryRun()) {
+      const code = await runInteractive("claude", ["login"]);
+      if (code !== 0) {
+        p.log.warn("`claude login` did not complete. Run it manually later.");
+      }
+    } else {
+      p.log.info("[dry-run] would run: claude login");
     }
-  } else {
-    p.log.info("[dry-run] would run: claude login");
   }
 
   p.note(

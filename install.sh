@@ -14,6 +14,12 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
+if ! command -v unzip >/dev/null 2>&1; then
+  step "installing unzip (required by bun)"
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq unzip
+fi
+
 if ! command -v bun >/dev/null 2>&1; then
   step "installing bun"
   curl -fsSL https://bun.sh/install | bash >/dev/null

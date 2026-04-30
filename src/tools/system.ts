@@ -25,7 +25,6 @@ const tool: Tool = {
         "lsb-release",
         "software-properties-common",
         "apt-transport-https",
-        "unzip",
         "zip",
         "git",
         "jq",

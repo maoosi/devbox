@@ -23,7 +23,7 @@ async function tokenWorks(token: string): Promise<boolean> {
 
 async function collectToken(ctx: Ctx): Promise<string> {
   const name = `devbox-${ctx.repo.slug}`;
-  const description = `Used by orbstack devbox machine for ${ctx.repo.owner}/${ctx.repo.name}`;
+  const description = `Used by devbox machine for ${ctx.repo.owner}/${ctx.repo.name}`;
   const access: "read" | "write" = ctx.gitMode === "write" ? "write" : "read";
   const fgUrl = ghFineGrainedTokenUrl({ name, description, ownerLogin: ctx.repo.owner, access });
 

@@ -9,6 +9,7 @@ type SettingsShape = {
   mcpServers?: Record<string, unknown>;
 };
 
+const TEST_HOME = "/home/testuser";
 const BASE_DENY_REQUIRED = [
   "Bash(git push --force:*)",
   "Bash(git push -f:*)",
@@ -18,7 +19,7 @@ const BASE_DENY_REQUIRED = [
   "Bash(npm publish:*)",
   "Read(.env)",
   "Read(.env.*)",
-  "Read(/home/devbox/.config/devbox/env)",
+  `Read(${TEST_HOME}/.config/devbox/env)`,
 ];
 
 const READ_ONLY_EXTRA = [
@@ -32,13 +33,13 @@ const READ_ONLY_EXTRA = [
 
 describe("buildSettings", () => {
   test("write mode: base deny only, no mcpServers key when empty", () => {
-    const s = buildSettings({}, "write") as SettingsShape;
+    const s = buildSettings({}, "write", TEST_HOME) as SettingsShape;
     expect(s.permissions.deny).toEqual(BASE_DENY_REQUIRED);
     expect("mcpServers" in s).toBe(false);
   });
 
   test("read-only mode: appends read-only deny entries", () => {
-    const s = buildSettings({}, "read-only") as SettingsShape;
+    const s = buildSettings({}, "read-only", TEST_HOME) as SettingsShape;
     expect(s.permissions.deny).toEqual([...BASE_DENY_REQUIRED, ...READ_ONLY_EXTRA]);
   });
 
@@ -49,12 +50,12 @@ describe("buildSettings", () => {
         headers: { Authorization: "Bearer ${GH_TOKEN}" },
       },
     };
-    const s = buildSettings(servers, "write") as SettingsShape;
+    const s = buildSettings(servers, "write", TEST_HOME) as SettingsShape;
     expect(s.mcpServers).toEqual(servers);
   });
 
   test("schema fixed values", () => {
-    const s = buildSettings({}, "write") as SettingsShape;
+    const s = buildSettings({}, "write", TEST_HOME) as SettingsShape;
     expect(s.includeCoAuthoredBy).toBe(false);
     expect(s.permissions.defaultMode).toBe("auto");
     expect(s.sandbox.enabled).toBe(true);
@@ -63,7 +64,7 @@ describe("buildSettings", () => {
   });
 
   test("output is JSON-serializable", () => {
-    const s = buildSettings({}, "read-only");
+    const s = buildSettings({}, "read-only", TEST_HOME);
     expect(() => JSON.stringify(s)).not.toThrow();
     const round = JSON.parse(JSON.stringify(s));
     expect(round).toEqual(s);
@@ -71,7 +72,7 @@ describe("buildSettings", () => {
 
   test("regression: dotenv reads always denied (both modes)", () => {
     for (const mode of ["read-only", "write"] as const) {
-      const s = buildSettings({}, mode) as SettingsShape;
+      const s = buildSettings({}, mode, TEST_HOME) as SettingsShape;
       expect(s.permissions.deny).toContain("Read(.env)");
       expect(s.permissions.deny).toContain("Read(.env.*)");
     }
@@ -79,16 +80,22 @@ describe("buildSettings", () => {
 
   test("regression: --no-verify push always denied (would bypass pre-push hook)", () => {
     for (const mode of ["read-only", "write"] as const) {
-      const s = buildSettings({}, mode) as SettingsShape;
+      const s = buildSettings({}, mode, TEST_HOME) as SettingsShape;
       expect(s.permissions.deny).toContain("Bash(git push --no-verify:*)");
     }
+  });
+
+  test("env-file deny uses the supplied home dir (not hardcoded /home/devbox)", () => {
+    const s = buildSettings({}, "write", "/home/ubuntu") as SettingsShape;
+    expect(s.permissions.deny).toContain("Read(/home/ubuntu/.config/devbox/env)");
+    expect(s.permissions.deny).not.toContain("Read(/home/devbox/.config/devbox/env)");
   });
 
   test("regression: no over-broad Read(**) deny that would lock everything down", () => {
     // This is the bug we fixed in the in-repo .claude/settings.json that originally
     // motivated this whole test suite. Deny rules must be specific paths/patterns,
     // never a global match — otherwise the tool can't read its own working directory.
-    const s = buildSettings({}, "write") as SettingsShape;
+    const s = buildSettings({}, "write", TEST_HOME) as SettingsShape;
     for (const rule of s.permissions.deny) {
       expect(rule).not.toMatch(/^(Read|Glob|Grep)\(\*\*\)$/);
     }

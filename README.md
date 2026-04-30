@@ -1,16 +1,26 @@
 # 👾📦 Devbox
 
-Per-project Orbstack devbox for running AI agents safely.
+Per-project devbox for running AI agents safely on any fresh Ubuntu machine.
 
 ## Quick start
 
-Create a new Orbstack machine (Ubuntu, latest, **Isolate machine** on), open its shell, and run:
+On a fresh Ubuntu machine, open a shell as a regular user (not root) and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maoosi/devbox/main/install.sh | bash
 ```
 
-The installer asks for the repo URL, picks a secrets manager, and walks you through pasting scoped tokens. At the end it prints the command to reconnect from your Mac.
+The installer asks for the repo URL, picks a secrets manager, and walks you through pasting scoped tokens. At the end it prints the command to reconnect.
+
+## Recommended host: Orbstack on Mac
+
+Devbox runs on any Ubuntu machine, but the cleanest setup is one Orbstack VM per repo on a Mac:
+
+- In the **Orbstack app**, create a new machine: Ubuntu, latest, **Isolate machine** on (disables file sharing + host integration so a compromise stays in the VM).
+- Open its shell, run the install command above.
+- Reconnect later with `orb shell devbox-<slug> -d ~/repo`.
+
+Plain SSH or any other Linux host works too — the install steps are identical.
 
 ## What you get
 

@@ -3,6 +3,7 @@ import * as p from "@clack/prompts";
 import { tools, selectTools } from "./tools/index.ts";
 import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
 import { parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
+import { cloneDir } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
 
@@ -184,9 +185,23 @@ async function main(): Promise<void> {
     }
   }
 
+  // Reconnect tips. Devbox runs on any Ubuntu host; we surface the Orbstack-on-Mac
+  // path (the typical setup) plus a plain-SSH fallback. The shell function is
+  // idempotent — paste it once and every future devbox reconnects with `devbox <slug>`.
+  const target = cloneDir();
   p.note(
-    `orb shell devbox-${repo.slug} -d /home/devbox/repos/${repo.slug}`,
-    "Reconnect later from your Mac",
+    [
+      `# One-shot from your Mac (Orbstack):`,
+      `orb shell devbox-${repo.slug} -d ${target}`,
+      ``,
+      `# Or paste this into your Mac's ~/.zshrc — works for every devbox:`,
+      `devbox() { orb shell "devbox-$1" -d ${target}; }`,
+      `# then: devbox ${repo.slug}`,
+      ``,
+      `# Plain SSH (any host):`,
+      `ssh <host> -t "cd ${target} && exec bash -l"`,
+    ].join("\n"),
+    "Reconnect later",
   );
 
   p.outro("All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases.");

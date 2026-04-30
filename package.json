@@ -1,7 +1,7 @@
 {
   "name": "devbox",
   "version": "2.0.0",
-  "description": "Per-project Orbstack devbox for running AI agents safely.",
+  "description": "Per-project devbox for running AI agents safely on any Ubuntu machine.",
   "type": "module",
   "private": true,
   "bin": {

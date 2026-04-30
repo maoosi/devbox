@@ -19,18 +19,21 @@ export type McpServer = {
 // Always-deny: catch-all destructive shapes that have no creative phrasing.
 // `git push --no-verify` is in here because the pre-push hook (installed by
 // repo.ts) is the only thing enforcing main/delete policies, and --no-verify
-// is a one-flag bypass.
-const BASE_DENY = [
-  "Bash(git push --force:*)",
-  "Bash(git push -f:*)",
-  "Bash(git push --no-verify:*)",
-  "Bash(git reset --hard:*)",
-  "Bash(git clean -fd:*)",
-  "Bash(npm publish:*)",
-  "Read(.env)",
-  "Read(.env.*)",
-  "Read(/home/devbox/.config/devbox/env)",
-];
+// is a one-flag bypass. The env-file path is templated from $HOME at install
+// time — Claude's deny patterns need an absolute path, not a `~` expansion.
+function baseDeny(homeDir: string): string[] {
+  return [
+    "Bash(git push --force:*)",
+    "Bash(git push -f:*)",
+    "Bash(git push --no-verify:*)",
+    "Bash(git reset --hard:*)",
+    "Bash(git clean -fd:*)",
+    "Bash(npm publish:*)",
+    "Read(.env)",
+    "Read(.env.*)",
+    `Read(${path.join(homeDir, ".config", "devbox", "env")})`,
+  ];
+}
 
 // Read-only mode: belt-and-suspenders on top of the read-scoped PAT.
 const READ_ONLY_DENY = [
@@ -45,8 +48,9 @@ const READ_ONLY_DENY = [
 export function buildSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
+  homeDir: string = home(),
 ): Record<string, unknown> {
-  const deny = [...BASE_DENY, ...(gitMode === "read-only" ? READ_ONLY_DENY : [])];
+  const deny = [...baseDeny(homeDir), ...(gitMode === "read-only" ? READ_ONLY_DENY : [])];
   return {
     includeCoAuthoredBy: false,
     permissions: {

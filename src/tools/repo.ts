@@ -1,8 +1,13 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { run } from "../exec.ts";
+import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
 import type { Tool, GitWritePolicy } from "./index.ts";
+
+// One devbox = one repo. The clone always lives at ~/repo so reconnect
+// commands and conventions docs are identical across every devbox you spin up.
+export function cloneDir(): string { return path.join(home(), "repo"); }
 
 // Pre-push hook script. The default-branch name is resolved at run time so
 // "main" / "master" / "trunk" are all handled. Sentinel SHA = branch deletion.
@@ -48,7 +53,7 @@ const tool: Tool = {
   default: true,
   required: true,
   async run(ctx) {
-    const target = `/home/devbox/repos/${ctx.repo.slug}`;
+    const target = cloneDir();
     const hookPath = path.join(target, ".git", "hooks", "pre-push");
     const installHook = shouldInstallHook(ctx.gitMode, ctx.gitWritePolicy);
 
@@ -59,7 +64,7 @@ const tool: Tool = {
       }
       return;
     }
-    await fs.mkdir("/home/devbox/repos", { recursive: true });
+    await fs.mkdir(home(), { recursive: true });
     await run("git", ["clone", ctx.repo.url, target], {
       env: { GH_TOKEN: ctx.tokens.GH_TOKEN, GIT_TERMINAL_PROMPT: "0" },
     });

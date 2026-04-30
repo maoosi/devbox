@@ -66,14 +66,21 @@ export function buildSettings(
   };
 }
 
-// Writes a fresh ~/.claude/settings.json. Fresh-VM only — no merge.
+// Writes a fresh ~/.claude/settings.json. Fresh-VM only — never merges, and
+// never clobbers an existing file (re-runs leave the user's edits intact).
 async function writeSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
 ): Promise<void> {
   if (isDryRun()) {
-    note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode})`);
+    note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode}; skipped if present)`);
     return;
+  }
+  try {
+    await fs.access(settingsPath());
+    return;
+  } catch {
+    /* not present — write a fresh one */
   }
   await fs.mkdir(claudeDir(), { recursive: true });
   const settings = buildSettings(mcpServers, gitMode);

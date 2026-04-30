@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import * as p from "@clack/prompts";
 import { tools, selectTools } from "./tools/index.ts";
 import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
-import { parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
+import { home, parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
 import { cloneDir } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
@@ -172,16 +174,28 @@ async function main(): Promise<void> {
   await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
 
   // Final manual step: claude login (Anthropic OAuth — no API alternative).
-  // Only when Claude Code was actually installed.
+  // Only when Claude Code was actually installed, and only when not already
+  // logged in. Claude Code writes ~/.claude/.credentials.json after a
+  // successful OAuth — its presence is a reliable "already authed" signal.
   if (selected.some((t) => t.id === "claude")) {
-    p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
-    if (!isDryRun()) {
+    const credsPath = path.join(home(), ".claude", ".credentials.json");
+    let alreadyAuthed = false;
+    try {
+      await fs.access(credsPath);
+      alreadyAuthed = true;
+    } catch {
+      /* not authed yet */
+    }
+    if (alreadyAuthed) {
+      p.log.info("Skipping `claude login` — already authenticated.");
+    } else if (isDryRun()) {
+      p.log.info("[dry-run] would run: claude login");
+    } else {
+      p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
       const code = await runInteractive("claude", ["login"]);
       if (code !== 0) {
         p.log.warn("`claude login` did not complete. Run it manually later.");
       }
-    } else {
-      p.log.info("[dry-run] would run: claude login");
     }
   }
 

@@ -18,6 +18,26 @@ const SOURCE_LINE = `for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && . "$f"; done`;
 
 export type EnvVars = Record<string, string>;
 
+// Read the env file written by writeEnv. Returns {} if the file is missing or
+// unreadable. Tolerant parser: matches `KEY="value"` and `KEY=value`, unescapes
+// the same `\"` writeEnv emits. Used to reuse already-validated secrets across
+// re-runs of the installer instead of forcing the user to mint new ones.
+export async function readEnv(): Promise<EnvVars> {
+  let body: string;
+  try {
+    body = await fs.readFile(envFile(), "utf8");
+  } catch {
+    return {};
+  }
+  const out: EnvVars = {};
+  for (const line of body.split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)="((?:[^"\\]|\\.)*)"$/) ?? line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+    if (!m) continue;
+    out[m[1]!] = m[2]!.replace(/\\"/g, '"');
+  }
+  return out;
+}
+
 export async function writeEnv(vars: EnvVars): Promise<void> {
   const envPath = envFile();
   if (isDryRun()) {

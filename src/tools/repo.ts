@@ -57,18 +57,33 @@ const tool: Tool = {
     const hookPath = path.join(target, ".git", "hooks", "pre-push");
     const installHook = shouldInstallHook(ctx.gitMode, ctx.gitWritePolicy);
 
+    // Skip the clone if ~/repo already exists. Re-runs with a different repo
+    // URL are not handled — the user can rm -rf ~/repo and re-run.
+    let alreadyCloned = false;
+    try {
+      await fs.access(target);
+      alreadyCloned = true;
+    } catch {
+      /* fresh */
+    }
+
     if (isDryRun()) {
-      note("clone", `${ctx.repo.url} → ${target}`);
+      if (alreadyCloned) note("skip clone", `${target} already exists`);
+      else note("clone", `${ctx.repo.url} → ${target}`);
       if (installHook) {
         note("write", `${hookPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`);
       }
       return;
     }
-    await fs.mkdir(home(), { recursive: true });
-    await run("git", ["clone", ctx.repo.url, target], {
-      env: { GH_TOKEN: ctx.tokens.GH_TOKEN, GIT_TERMINAL_PROMPT: "0" },
-    });
+    if (!alreadyCloned) {
+      await fs.mkdir(home(), { recursive: true });
+      await run("git", ["clone", ctx.repo.url, target], {
+        env: { GH_TOKEN: ctx.tokens.GH_TOKEN, GIT_TERMINAL_PROMPT: "0" },
+      });
+    }
 
+    // Always (re)write the hook — policy may have changed across runs and the
+    // file is a managed artifact.
     if (installHook) {
       await fs.writeFile(hookPath, prePushHook(ctx.gitWritePolicy), { mode: 0o755 });
     }

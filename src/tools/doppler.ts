@@ -1,5 +1,6 @@
 import * as p from "@clack/prompts";
 import { run, sh } from "../exec.ts";
+import { readEnv } from "../env.ts";
 import type { Tool } from "./index.ts";
 
 const tool: Tool = {
@@ -17,6 +18,21 @@ const tool: Tool = {
       { quiet: true },
     );
     await sh("sudo apt-get update -qq && sudo apt-get install -y -qq doppler", { quiet: true });
+
+    // Re-run path: reuse a previously-stored DOPPLER_TOKEN if it still works.
+    const stored = (await readEnv()).DOPPLER_TOKEN;
+    if (stored) {
+      const r = await run("doppler", ["me", "--json"], {
+        quiet: true,
+        allowFail: true,
+        env: { DOPPLER_TOKEN: stored },
+      });
+      if (r.code === 0) {
+        p.log.info("Reusing existing Doppler token from ~/.config/devbox/env.");
+        ctx.tokens.DOPPLER_TOKEN = stored;
+        return;
+      }
+    }
 
     p.log.message(
       [

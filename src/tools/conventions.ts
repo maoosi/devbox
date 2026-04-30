@@ -4,6 +4,15 @@ import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
 import type { Tool, Ctx } from "./index.ts";
 
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Generates ~/AGENTS.md from the install — only sections matching what was
 // actually selected. Codex / Gemini read AGENTS.md natively; for Claude Code
 // (which only reads CLAUDE.md), we drop a one-line ~/.claude/CLAUDE.md that
@@ -84,14 +93,19 @@ const tool: Tool = {
     const installClaudeShim = ctx.selectedToolIds.has("claude");
 
     if (isDryRun()) {
-      note("write", `${agentsPath} (sections gated by installed tools)`);
-      if (installClaudeShim) note("write", `${claudeMdPath} (imports ~/AGENTS.md)`);
+      note("write", `${agentsPath} (sections gated by installed tools; skipped if present)`);
+      if (installClaudeShim) note("write", `${claudeMdPath} (imports ~/AGENTS.md; skipped if present)`);
       return;
     }
 
-    await fs.writeFile(agentsPath, buildAgentsMd(ctx));
+    // Skip if already present so user edits aren't clobbered on re-run. The
+    // trade-off: changing tool selection on a re-run won't refresh the doc —
+    // delete the file to regenerate.
+    if (!(await fileExists(agentsPath))) {
+      await fs.writeFile(agentsPath, buildAgentsMd(ctx));
+    }
 
-    if (installClaudeShim) {
+    if (installClaudeShim && !(await fileExists(claudeMdPath))) {
       await fs.mkdir(path.dirname(claudeMdPath), { recursive: true });
       await fs.writeFile(claudeMdPath, CLAUDE_IMPORT_BODY);
     }

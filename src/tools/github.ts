@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import { run, sh } from "../exec.ts";
-import { ghClassicTokenUrl, ghFineGrainedTokenUrl } from "../env.ts";
+import { ghClassicTokenUrl, ghFineGrainedTokenUrl, readEnv } from "../env.ts";
 import type { Tool, Ctx } from "./index.ts";
 
 async function pasteToken(label: string): Promise<string> {
@@ -93,6 +93,23 @@ const tool: Tool = {
       { quiet: true },
     );
     await sh("sudo apt-get update -qq && sudo apt-get install -y -qq gh", { quiet: true });
+
+    // Re-run path: reuse a previously-stored GH_TOKEN if it still validates
+    // against the target repo. Skips the manual PAT minting flow and avoids
+    // piling up dead tokens in GitHub's settings UI.
+    const stored = (await readEnv()).GH_TOKEN;
+    if (stored) {
+      const r = await run("gh", ["api", `repos/${ctx.repo.owner}/${ctx.repo.name}`], {
+        quiet: true,
+        allowFail: true,
+        env: { GH_TOKEN: stored },
+      });
+      if (r.code === 0) {
+        p.log.info("Reusing existing GitHub token from ~/.config/devbox/env.");
+        ctx.tokens.GH_TOKEN = stored;
+        return;
+      }
+    }
 
     const token = await collectToken(ctx);
     ctx.tokens.GH_TOKEN = token;

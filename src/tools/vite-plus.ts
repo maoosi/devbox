@@ -1,4 +1,7 @@
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import { sh } from "../exec.ts";
+import { home } from "../env.ts";
 import type { Tool } from "./index.ts";
 
 const tool: Tool = {
@@ -7,6 +10,14 @@ const tool: Tool = {
   default: true,
   required: false,
   async run() {
+    // Upstream installer appends `. "$HOME/.vite-plus/env"` to ~/.bashrc on
+    // every run. Skip if the install marker is already there.
+    try {
+      await fs.access(path.join(home(), ".vite-plus"));
+      return;
+    } catch {
+      /* not installed yet */
+    }
     await sh("curl -fsSL https://vite.plus | bash", { quiet: true });
   },
 };

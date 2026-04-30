@@ -1,5 +1,6 @@
 import * as p from "@clack/prompts";
 import { sh } from "../exec.ts";
+import { readEnv } from "../env.ts";
 import type { Tool } from "./index.ts";
 
 const tool: Tool = {
@@ -13,6 +14,18 @@ const tool: Tool = {
       { quiet: true },
     );
     await sh("sudo apt-get update -qq && sudo apt-get install -y -qq infisical", { quiet: true });
+
+    // Re-run path: reuse a previously-stored INFISICAL_TOKEN if it parses as
+    // a service token. We don't validate it against the API here — the
+    // Infisical CLI has no zero-arg "me" probe, and we don't yet know which
+    // project ID to test against. If the token has been revoked, the user
+    // can delete the line from ~/.config/devbox/env and re-run.
+    const stored = (await readEnv()).INFISICAL_TOKEN;
+    if (stored && stored.startsWith("st.")) {
+      p.log.info("Reusing existing Infisical token from ~/.config/devbox/env.");
+      ctx.tokens.INFISICAL_TOKEN = stored;
+      return;
+    }
 
     p.log.message(
       [

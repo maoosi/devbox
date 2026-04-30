@@ -28,7 +28,7 @@ step "fetching devbox cli"
 mkdir -p src/tools templates
 curl -fsSL "${RAW}/package.json"  -o package.json
 curl -fsSL "${RAW}/tsconfig.json" -o tsconfig.json
-for f in cli.ts exec.ts env.ts; do
+for f in cli.ts exec.ts env.ts dryrun.ts; do
   curl -fsSL "${RAW}/src/${f}" -o "src/${f}"
 done
 for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo; do

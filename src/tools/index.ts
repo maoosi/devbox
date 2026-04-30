@@ -39,6 +39,7 @@ import vitePlus from "./vite-plus.ts";
 import ignoreScripts from "./ignore-scripts.ts";
 import mcp from "./mcp.ts";
 import repo from "./repo.ts";
+import skills from "./skills.ts";
 
 // Order matters: claude runs last so ctx.mcpServers is populated when it
 // writes ~/.claude/settings.json. Repo cloning needs ctx.tokens.GH_TOKEN, so
@@ -55,6 +56,7 @@ export const tools: Tool[] = [
   ignoreScripts,
   mcp,
   repo,
+  skills,
   claude,
 ];
 

@@ -31,7 +31,8 @@ async function readFirst(paths: string[]): Promise<string | null> {
 
 const tool: Tool = {
   id: "skills",
-  label: "Claude Code skills (code-review, …)",
+  label: "Skills",
+  hint: "code-review, …",
   default: true,
   required: false,
   async run() {

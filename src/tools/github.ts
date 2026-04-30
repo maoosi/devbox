@@ -66,8 +66,11 @@ const tool: Tool = {
   default: true,
   required: true,
   async run(ctx) {
+    // Install.sh sets `umask 077`, which sudo inherits. Without explicit chmod,
+    // the keyring lands as root:root mode 0600 → apt's `_apt` user can't read
+    // it → GPG verification fails → `apt-get update` exits 100.
     await sh(
-      "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg",
+      "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg",
       { quiet: true },
     );
     await sh(

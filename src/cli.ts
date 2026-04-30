@@ -127,7 +127,7 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes("--dry-run") || argv.includes("-n")) setDryRun(true);
 
-  p.intro(isDryRun() ? "devbox installer (dry-run)" : "devbox installer");
+  p.intro(isDryRun() ? "👾📦 Devbox installer (dry-run)" : "👾📦 Devbox installer");
 
   const repo = await pickRepo();
   const git = await pickGitIdentity();

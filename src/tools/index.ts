@@ -61,8 +61,8 @@ export const tools: Tool[] = [
   ignoreScripts,
   mcp,
   repo,
-  skills,
   claude,
+  skills,
   conventions,
 ];
 

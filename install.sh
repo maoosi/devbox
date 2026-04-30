@@ -39,4 +39,6 @@ curl -fsSL "${RAW}/templates/CLAUDE.md.tmpl" -o templates/CLAUDE.md.tmpl
 step "installing dependencies"
 bun install --silent
 
-exec bun src/cli.ts "$@"
+# Re-attach stdin to the TTY so interactive prompts work under `curl | bash`,
+# where stdin would otherwise be the curl pipe.
+exec bun src/cli.ts "$@" < /dev/tty

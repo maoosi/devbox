@@ -1,6 +1,7 @@
 // Dry-run mode: print what the installer would do without changing anything.
 // Set via --dry-run / -n on the CLI. Token-paste prompts still happen so the
 // UI flow is realistic, but no commands run and no files are written.
+import * as p from "@clack/prompts";
 
 let active = false;
 
@@ -14,5 +15,5 @@ export function isDryRun(): boolean {
 
 export function note(action: string, detail?: string): void {
   if (!active) return;
-  console.log(`  [dry-run] ${action}${detail ? `: ${detail}` : ""}`);
+  p.log.message(`[dry-run] ${action}${detail ? `: ${detail}` : ""}`);
 }

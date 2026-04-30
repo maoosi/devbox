@@ -6,6 +6,9 @@ export type RunOptions = {
   cwd?: string;
   quiet?: boolean;
   allowFail?: boolean;
+  // Bypass dry-run mode. Use only for read-only introspection that
+  // informs prompt defaults (e.g. reading existing git config).
+  force?: boolean;
 };
 
 export type RunResult = { code: number; stdout: string; stderr: string };
@@ -15,7 +18,7 @@ export async function run(
   args: string[],
   opts: RunOptions = {},
 ): Promise<RunResult> {
-  if (isDryRun()) {
+  if (isDryRun() && !opts.force) {
     note("exec", `${cmd} ${args.join(" ")}`);
     return { code: 0, stdout: "", stderr: "" };
   }
@@ -51,4 +54,18 @@ export function sh(script: string, opts: RunOptions = {}): Promise<RunResult> {
 export async function has(cmd: string): Promise<boolean> {
   const r = await run("which", [cmd], { quiet: true, allowFail: true });
   return r.code === 0;
+}
+
+// For commands that need a real TTY (e.g. claude login's OAuth flow).
+// stdio:'inherit' so the user sees prompts and can interact directly.
+export async function runInteractive(cmd: string, args: string[]): Promise<number> {
+  if (isDryRun()) {
+    note("interactive", `${cmd} ${args.join(" ")}`);
+    return 0;
+  }
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { stdio: "inherit" });
+    child.on("close", (code) => resolve(code ?? 0));
+    child.on("error", () => resolve(1));
+  });
 }

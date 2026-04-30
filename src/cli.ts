@@ -3,6 +3,7 @@ import * as p from "@clack/prompts";
 import { tools } from "./tools/index.ts";
 import type { Ctx, Tool } from "./tools/index.ts";
 import { parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
+import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
 
 async function pickRepo(): Promise<Ctx["repo"]> {
@@ -30,9 +31,38 @@ async function pickSecretsManager(): Promise<Ctx["secretsManager"]> {
   return v as Ctx["secretsManager"];
 }
 
+async function pickGitIdentity(): Promise<{ name: string; email: string }> {
+  // Use whatever git already has as defaults so power users don't retype.
+  // `force: true` so the read happens even under dry-run (it's introspection,
+  // not an action — and skipping it would mean dry-run never has defaults).
+  const existingName = (await run("git", ["config", "--global", "user.name"], { quiet: true, allowFail: true, force: true })).stdout.trim();
+  const existingEmail = (await run("git", ["config", "--global", "user.email"], { quiet: true, allowFail: true, force: true })).stdout.trim();
+
+  // clack quirk: passing both placeholder + initialValue causes typed input
+  // to append to the initial value. Pass exactly one.
+  const name = await p.text({
+    message: "Git user.name?",
+    ...(existingName
+      ? { initialValue: existingName }
+      : { placeholder: "Your Name" }),
+    validate: (s) => (s && s.length >= 1 ? undefined : "Required"),
+  });
+  if (p.isCancel(name)) process.exit(1);
+
+  const email = await p.text({
+    message: "Git user.email?",
+    ...(existingEmail
+      ? { initialValue: existingEmail }
+      : { placeholder: "you@example.com" }),
+    validate: (s) => (s && /.+@.+\..+/.test(s) ? undefined : "Expected an email address"),
+  });
+  if (p.isCancel(email)) process.exit(1);
+
+  return { name: (name as string).trim(), email: (email as string).trim() };
+}
+
 async function pickTools(secrets: Ctx["secretsManager"]): Promise<Tool[]> {
   // The chosen secrets manager auto-installs; the other one is hidden.
-  // Both are filtered out of the multi-select so we don't ask twice.
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
   const auto = new Set<string>(secrets !== "none" ? [secrets] : []);
 
@@ -45,7 +75,6 @@ async function pickTools(secrets: Ctx["secretsManager"]): Promise<Tool[]> {
   });
   if (p.isCancel(v)) process.exit(1);
   const picked = new Set(v as string[]);
-  // Preserve the canonical order from `tools` so claude still runs last.
   return tools.filter((t) => t.required || picked.has(t.id) || auto.has(t.id));
 }
 
@@ -58,6 +87,7 @@ async function main(): Promise<void> {
   p.intro(isDryRun() ? "devbox installer (dry-run)" : "devbox installer");
 
   const repo = await pickRepo();
+  const git = await pickGitIdentity();
   const secretsManager = await pickSecretsManager();
   const selected = await pickTools(secretsManager);
 
@@ -83,25 +113,30 @@ async function main(): Promise<void> {
     }
   }
 
+  // Apply git identity now that git is installed.
+  await run("git", ["config", "--global", "user.name", git.name], { quiet: true });
+  await run("git", ["config", "--global", "user.email", git.email], { quiet: true });
+
   await writeEnv(ctx.tokens);
   await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
 
-  p.note(
-    [
-      `1. source ~/.bashrc            (or open a new shell)`,
-      `2. claude login                (opens Anthropic OAuth in your browser)`,
-      `3. git config --global user.name "Your Name"`,
-      `   git config --global user.email "you@example.com"`,
-    ].join("\n"),
-    "Next steps inside this devbox",
-  );
+  // Final manual step: claude login (Anthropic OAuth — no API alternative).
+  p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
+  if (!isDryRun()) {
+    const code = await runInteractive("claude", ["login"]);
+    if (code !== 0) {
+      p.log.warn("`claude login` did not complete. Run it manually later.");
+    }
+  } else {
+    p.log.info("[dry-run] would run: claude login");
+  }
 
   p.note(
     `orb shell devbox-${repo.slug} -d /home/devbox/repos/${repo.slug}`,
     "Reconnect later from your Mac",
   );
 
-  p.outro("Done.");
+  p.outro("All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases.");
 }
 
 main().catch((err) => {

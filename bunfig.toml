@@ -1,0 +1,9 @@
+[install]
+# Pin exact versions on `bun add` (no caret/tilde ranges in package.json).
+exact = true
+
+# Refuse to install package versions younger than 5 days. Supply-chain
+# hardening — buys time for a typo-squat or compromised release to be
+# reported and yanked before it can land in our lockfile.
+# 5 days = 5 * 24 * 60 * 60.
+minimumReleaseAge = 432000

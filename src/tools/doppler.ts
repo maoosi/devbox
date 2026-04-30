@@ -27,9 +27,10 @@ const tool: Tool = {
     p.log.warn(
       [
         `Doppler URLs use opaque IDs, so nothing can be pre-filled. In the dashboard:`,
-        `  1. Open the project + dev config for ${ctx.repo.owner}/${ctx.repo.name}`,
-        `  2. Access tab → Generate Service Token`,
-        `  3. Role: Read only. Name: devbox-${ctx.repo.slug}`,
+        `  1. Open the project for ${ctx.repo.owner}/${ctx.repo.name}`,
+        `  2. Click the branch config you want this devbox to use (e.g. "agents")`,
+        `  3. Inside that branch config, open the Access tab → Generate Service Token`,
+        `  4. Role: Read only. Name: devbox-${ctx.repo.slug}`,
         "",
         `Copy the token (starts with dp.st.) and paste below.`,
       ].join("\n"),

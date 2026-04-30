@@ -30,7 +30,8 @@ The installer asks for the repo URL, picks a secrets manager, and walks you thro
 
 ## Security posture
 
-- **GitHub** — fine-grained PAT scoped to one repo. Falls back to a classic PAT if your org disables FGPATs.
+- **GitHub** — fine-grained PAT scoped to one repo. Access level (read-only or write) is chosen at install time. In read-only mode the PAT can't mutate the repo, period — server-side. Falls back to a classic PAT if your org disables FGPATs.
+- **Git policy** — at install you pick: read-only (agent edits files; you push) or write (agent commits/pushes/opens PRs). In write mode, two opt-in toggles default off: direct pushes to the default branch, and branch deletes. Both are enforced by a `pre-push` hook in the cloned repo plus a Claude-level deny on `git push --no-verify` (the only non-brittle bypass).
 - **Secrets** — one of {Doppler, Infisical, none}, with a read-only service token scoped to one project + dev environment. The other CLI is not installed.
 - **Supply chain** — `sfw` (Socket Firewall) wraps npm/pnpm/yarn/pip/uv/cargo and blocks known-malicious packages at install. `ignore-scripts=true` is set globally as a second layer.
 - **Per-machine isolation** — each repo gets its own Orbstack machine with "Isolate machine" enabled. A compromise in one cannot reach another's tokens or your Mac's files.

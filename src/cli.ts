@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import * as p from "@clack/prompts";
 import { tools } from "./tools/index.ts";
-import type { Ctx, Tool } from "./tools/index.ts";
+import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
 import { parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
@@ -15,6 +15,51 @@ async function pickRepo(): Promise<Ctx["repo"]> {
   });
   if (p.isCancel(v)) process.exit(1);
   return { url: v as string, ...parseRepoUrl(v as string)! };
+}
+
+async function pickGitMode(): Promise<GitMode> {
+  const v = await p.select({
+    message: "Should the agent be able to write to git in this repo?",
+    initialValue: "write",
+    options: [
+      {
+        value: "write",
+        label: "Write — agent commits, pushes, opens PRs",
+        hint: "PAT scoped to write contents + PRs",
+      },
+      {
+        value: "read-only",
+        label: "Read-only — agent edits files; you handle git",
+        hint: "PAT scoped to read; agent push/commit/PR-create denied",
+      },
+    ],
+  });
+  if (p.isCancel(v)) process.exit(1);
+  return v as GitMode;
+}
+
+async function pickGitWritePolicy(): Promise<GitWritePolicy> {
+  const v = await p.multiselect({
+    message: "Extra write permissions (default: off)",
+    options: [
+      {
+        value: "pushMain",
+        label: "Allow direct pushes to the default branch (skip PR review)",
+      },
+      {
+        value: "deleteBranches",
+        label: "Allow deleting branches (local + remote)",
+      },
+    ],
+    initialValues: [],
+    required: false,
+  });
+  if (p.isCancel(v)) process.exit(1);
+  const picked = new Set(v as string[]);
+  return {
+    pushMain: picked.has("pushMain"),
+    deleteBranches: picked.has("deleteBranches"),
+  };
 }
 
 async function pickSecretsManager(): Promise<Ctx["secretsManager"]> {
@@ -88,12 +133,19 @@ async function main(): Promise<void> {
 
   const repo = await pickRepo();
   const git = await pickGitIdentity();
+  const gitMode = await pickGitMode();
+  const gitWritePolicy =
+    gitMode === "write"
+      ? await pickGitWritePolicy()
+      : { pushMain: false, deleteBranches: false };
   const secretsManager = await pickSecretsManager();
   const selected = await pickTools(secretsManager);
 
   const ctx: Ctx = {
     repo,
     secretsManager,
+    gitMode,
+    gitWritePolicy,
     tokens: {},
     exports: [],
     aliases: [],

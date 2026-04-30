@@ -16,24 +16,27 @@ const tool: Tool = {
 
     p.log.message(
       [
-        "Infisical machine identity token — open your dashboard:",
+        "Infisical service token — open your dashboard:",
         "  https://app.infisical.com/",
       ].join("\n"),
     );
     p.log.warn(
       [
         `Infisical URLs use opaque IDs, so nothing can be pre-filled. In the dashboard:`,
-        `  1. Open your project for ${ctx.repo.owner}/${ctx.repo.name}`,
-        `  2. Settings → Access Control → Machine Identities → Create`,
-        `  3. Name: devbox-${ctx.repo.slug}. Read access to the dev environment only.`,
-        `  4. Use Universal Auth and copy the token.`,
+        `  1. Open the project for ${ctx.repo.owner}/${ctx.repo.name}`,
+        `  2. Access Control (left panel) → Service Tokens → Create Token`,
+        `  3. Service Token Name: devbox-${ctx.repo.slug}`,
+        `     Environment: pick the one this devbox should use (e.g. "Agent")`,
+        `     Set an expiration`,
+        `     Permission: Read`,
+        `  4. Click Create and copy the token (starts with st.).`,
         "",
         `Paste the token below.`,
       ].join("\n"),
     );
     const v = await p.password({
       message: "Paste Infisical token (hidden):",
-      validate: (s) => (s && s.length >= 8 ? undefined : "Token looks too short."),
+      validate: (s) => (s && s.startsWith("st.") ? undefined : "Expected an st.* service token."),
     });
     if (p.isCancel(v)) throw new Error("Cancelled.");
     ctx.tokens.INFISICAL_TOKEN = (v as string).trim();

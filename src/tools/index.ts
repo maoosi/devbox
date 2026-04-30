@@ -1,8 +1,17 @@
 import type { McpServer } from "./claude.ts";
 
+export type GitMode = "read-only" | "write";
+
+export type GitWritePolicy = {
+  pushMain: boolean;        // allow direct pushes to the default branch
+  deleteBranches: boolean;  // allow deleting branches (local + remote)
+};
+
 export type Ctx = {
   repo: { url: string; owner: string; name: string; slug: string };
   secretsManager: "doppler" | "infisical" | "none";
+  gitMode: GitMode;
+  gitWritePolicy: GitWritePolicy;
   tokens: Record<string, string>;
   exports: string[];
   aliases: string[];

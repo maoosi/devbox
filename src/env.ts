@@ -75,18 +75,23 @@ export function parseRepoUrl(
 // which is harder to read than just leaving the default. There is no
 // documented param for prefilling repo selection — the user picks the repo
 // manually. `target_name` narrows the resource owner dropdown.
+//
+// `access` controls whether the token can mutate the repo:
+//   - "read"  → contents/PRs are read-only; agent can fetch + post nothing
+//   - "write" → contents=write + PRs=write so the agent can push and open PRs
 export function ghFineGrainedTokenUrl(opts: {
   name: string;
   description: string;
   ownerLogin: string;
+  access: "read" | "write";
 }): string {
   const params = new URLSearchParams({
     name: opts.name,
     description: opts.description,
     target_name: opts.ownerLogin,
     metadata: "read",
-    contents: "write",
-    pull_requests: "write",
+    contents: opts.access,
+    pull_requests: opts.access,
     issues: "read",
     commit_statuses: "read",
     actions: "read",

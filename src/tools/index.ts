@@ -57,3 +57,23 @@ export const tools: Tool[] = [
   repo,
   claude,
 ];
+
+// Resolves which tools to actually run, given:
+//   - allTools: the canonical ordered list
+//   - pickedIds: ids from the optional-tools multiselect (no required, no secrets managers)
+//   - secretsManager: auto-includes the chosen one; the other one is hidden
+// Required tools are always included. The non-chosen secrets manager is excluded
+// even if a caller somehow passes it in pickedIds.
+export function selectTools(
+  allTools: Tool[],
+  pickedIds: Set<string>,
+  secretsManager: Ctx["secretsManager"],
+): Tool[] {
+  const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
+  const otherSecrets = secretsManager === "doppler" ? "infisical" : secretsManager === "infisical" ? "doppler" : null;
+  const auto = new Set<string>(secretsManager !== "none" ? [secretsManager] : []);
+  return allTools.filter((t) => {
+    if (isSecretsTool(t.id) && otherSecrets === t.id) return false;
+    return t.required || pickedIds.has(t.id) || auto.has(t.id);
+  });
+}

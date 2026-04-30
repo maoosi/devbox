@@ -6,7 +6,7 @@ import type { Tool, GitWritePolicy } from "./index.ts";
 
 // Pre-push hook script. The default-branch name is resolved at run time so
 // "main" / "master" / "trunk" are all handled. Sentinel SHA = branch deletion.
-function prePushHook(policy: GitWritePolicy): string {
+export function prePushHook(policy: GitWritePolicy): string {
   return `#!/bin/sh
 # Installed by devbox install. Reflects this devbox's git policy.
 # Bypassing requires \`--no-verify\`, which is denied at the Claude layer.
@@ -33,7 +33,7 @@ exit 0
 // Hook is only meaningful in write mode AND only when at least one restriction
 // applies. Read-only mode relies on the PAT scope (server-side) — installing a
 // hook there would just inconvenience the human if they ever pushed manually.
-function shouldInstallHook(
+export function shouldInstallHook(
   gitMode: "read-only" | "write",
   policy: GitWritePolicy,
 ): boolean {

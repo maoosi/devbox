@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import * as p from "@clack/prompts";
-import { tools } from "./tools/index.ts";
+import { tools, selectTools } from "./tools/index.ts";
 import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
 import { parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
 import { run, runInteractive } from "./exec.ts";
@@ -107,10 +107,8 @@ async function pickGitIdentity(): Promise<{ name: string; email: string }> {
 }
 
 async function pickTools(secrets: Ctx["secretsManager"]): Promise<Tool[]> {
-  // The chosen secrets manager auto-installs; the other one is hidden.
+  // The chosen secrets manager auto-installs; the other one is hidden from the prompt.
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
-  const auto = new Set<string>(secrets !== "none" ? [secrets] : []);
-
   const optional = tools.filter((t) => !t.required && !isSecretsTool(t.id));
   const v = await p.multiselect({
     message: "Optional tools to install:",
@@ -119,8 +117,7 @@ async function pickTools(secrets: Ctx["secretsManager"]): Promise<Tool[]> {
     required: false,
   });
   if (p.isCancel(v)) process.exit(1);
-  const picked = new Set(v as string[]);
-  return tools.filter((t) => t.required || picked.has(t.id) || auto.has(t.id));
+  return selectTools(tools, new Set(v as string[]), secrets);
 }
 
 async function main(): Promise<void> {

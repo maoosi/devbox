@@ -3,27 +3,32 @@ import * as path from "node:path";
 import { homedir } from "node:os";
 import { isDryRun, note } from "./dryrun.ts";
 
-export const HOME = homedir();
-export const CONFIG_DIR = path.join(HOME, ".config", "devbox");
-export const ENV_FILE = path.join(CONFIG_DIR, "env");
-export const BASHRC_D = path.join(HOME, ".bashrc.d");
-export const DEVBOX_SH = path.join(BASHRC_D, "devbox.sh");
-export const BASHRC = path.join(HOME, ".bashrc");
+// Resolved at call time — process.env.HOME overrides homedir() so tests can
+// point the installer at a sandbox tempdir without forking a child process.
+export function home(): string {
+  return process.env.HOME ?? homedir();
+}
+export function configDir(): string { return path.join(home(), ".config", "devbox"); }
+export function envFile(): string { return path.join(configDir(), "env"); }
+export function bashrcD(): string { return path.join(home(), ".bashrc.d"); }
+export function devboxSh(): string { return path.join(bashrcD(), "devbox.sh"); }
+export function bashrc(): string { return path.join(home(), ".bashrc"); }
 
 const SOURCE_LINE = `for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && . "$f"; done`;
 
 export type EnvVars = Record<string, string>;
 
 export async function writeEnv(vars: EnvVars): Promise<void> {
+  const envPath = envFile();
   if (isDryRun()) {
-    note("write", `${ENV_FILE} (${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`);
+    note("write", `${envPath} (${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`);
     return;
   }
-  await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  await fs.mkdir(configDir(), { recursive: true, mode: 0o700 });
   const body = Object.entries(vars)
     .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
     .join("\n");
-  await fs.writeFile(ENV_FILE, body + "\n", { mode: 0o600 });
+  await fs.writeFile(envPath, body + "\n", { mode: 0o600 });
 }
 
 // Writes a single ~/.bashrc.d/devbox.sh that loads the env file and sets aliases/exports.
@@ -32,29 +37,31 @@ export async function writeShellInit(opts: {
   exports?: string[];
   aliases?: string[];
 }): Promise<void> {
+  const shFile = devboxSh();
+  const bashrcFile = bashrc();
   if (isDryRun()) {
-    note("write", `${DEVBOX_SH} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases)`);
-    note("append", `${BASHRC} (source line, if missing)`);
+    note("write", `${shFile} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases)`);
+    note("append", `${bashrcFile} (source line, if missing)`);
     return;
   }
-  await fs.mkdir(BASHRC_D, { recursive: true });
+  await fs.mkdir(bashrcD(), { recursive: true });
   const lines: string[] = [
     `# managed by devbox install — do not edit by hand`,
-    `[ -f ${ENV_FILE} ] && set -a && . ${ENV_FILE} && set +a`,
+    `[ -f ${envFile()} ] && set -a && . ${envFile()} && set +a`,
     ...(opts.exports ?? []),
     ...(opts.aliases ?? []),
     "",
   ];
-  await fs.writeFile(DEVBOX_SH, lines.join("\n"));
+  await fs.writeFile(shFile, lines.join("\n"));
 
-  let bashrc = "";
+  let body = "";
   try {
-    bashrc = await fs.readFile(BASHRC, "utf8");
+    body = await fs.readFile(bashrcFile, "utf8");
   } catch {
     /* fresh VM may not have one */
   }
-  if (!bashrc.includes(SOURCE_LINE)) {
-    await fs.appendFile(BASHRC, `\n${SOURCE_LINE}\n`);
+  if (!body.includes(SOURCE_LINE)) {
+    await fs.appendFile(bashrcFile, `\n${SOURCE_LINE}\n`);
   }
 }
 

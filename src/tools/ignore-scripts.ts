@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { run } from "../exec.ts";
-import { HOME } from "../env.ts";
+import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
 import type { Tool } from "./index.ts";
 
@@ -15,7 +15,7 @@ const tool: Tool = {
     await run("npm", ["config", "set", "ignore-scripts", "true"], { quiet: true });
     await run("pnpm", ["config", "set", "ignore-scripts", "true"], { quiet: true, allowFail: true });
 
-    const bunfig = path.join(HOME, ".bunfig.toml");
+    const bunfig = path.join(home(), ".bunfig.toml");
     if (isDryRun()) {
       note("write", `${bunfig} ([install] ignoreScripts = true)`);
       return;

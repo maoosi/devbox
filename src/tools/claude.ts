@@ -1,12 +1,12 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { sh } from "../exec.ts";
-import { HOME } from "../env.ts";
+import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
 import type { Tool } from "./index.ts";
 
-const CLAUDE_DIR = path.join(HOME, ".claude");
-const SETTINGS_PATH = path.join(CLAUDE_DIR, "settings.json");
+function claudeDir(): string { return path.join(home(), ".claude"); }
+function settingsPath(): string { return path.join(claudeDir(), "settings.json"); }
 
 export type McpServer = {
   command?: string;
@@ -16,49 +16,42 @@ export type McpServer = {
   headers?: Record<string, string>;
 };
 
-// Writes a fresh ~/.claude/settings.json. Fresh-VM only — no merge.
-async function writeSettings(
+// Always-deny: catch-all destructive shapes that have no creative phrasing.
+// `git push --no-verify` is in here because the pre-push hook (installed by
+// repo.ts) is the only thing enforcing main/delete policies, and --no-verify
+// is a one-flag bypass.
+const BASE_DENY = [
+  "Bash(git push --force:*)",
+  "Bash(git push -f:*)",
+  "Bash(git push --no-verify:*)",
+  "Bash(git reset --hard:*)",
+  "Bash(git clean -fd:*)",
+  "Bash(npm publish:*)",
+  "Read(.env)",
+  "Read(.env.*)",
+  "Read(/home/devbox/.config/devbox/env)",
+];
+
+// Read-only mode: belt-and-suspenders on top of the read-scoped PAT.
+const READ_ONLY_DENY = [
+  "Bash(git push:*)",
+  "Bash(git commit:*)",
+  "Bash(gh pr create:*)",
+  "Bash(gh pr edit:*)",
+  "Bash(gh pr merge:*)",
+  "Bash(gh issue create:*)",
+];
+
+export function buildSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
-): Promise<void> {
-  // Always-deny: catch-all destructive shapes that have no creative phrasing.
-  // `git push --no-verify` is in here because the pre-push hook (installed by
-  // repo.ts) is the only thing enforcing main/delete policies, and --no-verify
-  // is a one-flag bypass.
-  const baseDeny = [
-    "Bash(git push --force:*)",
-    "Bash(git push -f:*)",
-    "Bash(git push --no-verify:*)",
-    "Bash(git reset --hard:*)",
-    "Bash(git clean -fd:*)",
-    "Bash(npm publish:*)",
-    "Read(.env)",
-    "Read(.env.*)",
-    "Read(/home/devbox/.config/devbox/env)",
-  ];
-  // Read-only mode: belt-and-suspenders on top of the read-scoped PAT.
-  const readOnlyDeny =
-    gitMode === "read-only"
-      ? [
-          "Bash(git push:*)",
-          "Bash(git commit:*)",
-          "Bash(gh pr create:*)",
-          "Bash(gh pr edit:*)",
-          "Bash(gh pr merge:*)",
-          "Bash(gh issue create:*)",
-        ]
-      : [];
-
-  if (isDryRun()) {
-    note("write", `${SETTINGS_PATH} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode})`);
-    return;
-  }
-  await fs.mkdir(CLAUDE_DIR, { recursive: true });
-  const settings = {
+): Record<string, unknown> {
+  const deny = [...BASE_DENY, ...(gitMode === "read-only" ? READ_ONLY_DENY : [])];
+  return {
     includeCoAuthoredBy: false,
     permissions: {
       defaultMode: "auto",
-      deny: [...baseDeny, ...readOnlyDeny],
+      deny,
     },
     sandbox: {
       enabled: true,
@@ -67,7 +60,20 @@ async function writeSettings(
     theme: "light",
     ...(Object.keys(mcpServers).length > 0 ? { mcpServers } : {}),
   };
-  await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+}
+
+// Writes a fresh ~/.claude/settings.json. Fresh-VM only — no merge.
+async function writeSettings(
+  mcpServers: Record<string, McpServer>,
+  gitMode: "read-only" | "write",
+): Promise<void> {
+  if (isDryRun()) {
+    note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode})`);
+    return;
+  }
+  await fs.mkdir(claudeDir(), { recursive: true });
+  const settings = buildSettings(mcpServers, gitMode);
+  await fs.writeFile(settingsPath(), JSON.stringify(settings, null, 2) + "\n");
 }
 
 // Runs last so ctx.mcpServers (populated by other tools) is final by now.

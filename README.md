@@ -4,53 +4,35 @@ Per-project Orbstack devbox for running Claude Code agents with scoped credentia
 
 ## Quick start
 
-In the **Orbstack app** on your Mac, click "Create" and fill in the New Machine form:
-
-- **Name** — `devbox-<repo-slug>`
-- **Distribution** — Ubuntu
-- **Version** — latest (e.g. 25.10)
-- **Architecture** — arm64 (or your Mac's native)
-- **Advanced → Isolate machine** — **on** (disables file sharing + host integration so a compromise stays in the box)
-
-Open a shell in the new machine (Orbstack app → the machine → "Shell"), then run:
+Create a new Orbstack machine (Ubuntu, latest, **Isolate machine** on), open its shell, and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maoosi/devbox/main/install.sh | bash
 ```
 
-The installer asks for the repo URL, picks a secrets manager, and walks you through pasting scoped tokens. At the end it prints the exact command to use next time on your Mac to reconnect.
+The installer asks for the repo URL, picks a secrets manager, and walks you through pasting scoped tokens. At the end it prints the command to reconnect from your Mac.
 
-## What's installed
+## What you get
 
-| Category | Tools | Notes |
-|---|---|---|
-| Required | git, curl, bun, Node (LTS via fnm), pnpm, Claude Code, gh | always installed |
-| Optional (default on) | Vite+, agent-browser, Socket Firewall, Doppler **or** Infisical | togglable |
-| Optional (default off) | the unselected secrets manager | not installed |
+- **One repo per machine.** GitHub PAT, secrets-manager token, and clone are all scoped to a single repo.
+- **Read-only or write git mode**, chosen at install. Write mode adds opt-in toggles (default off) for direct pushes to the default branch and branch deletes, enforced by a `pre-push` hook + a Claude deny on `git push --no-verify`.
+- **Supply-chain hardening.** `npm/pnpm/yarn/pip/uv/cargo` are aliased through Socket Firewall; `ignore-scripts=true` is set globally.
+- **Claude Code** with destructive ops (`git push --force`, `git reset --hard`, `npm publish`, …) denied.
+- Tools: git, curl, bun, Node (LTS via fnm), pnpm, gh, Claude Code, plus optional Vite+, agent-browser, Socket Firewall, and one of Doppler / Infisical / none.
 
-## Security posture
-
-- **GitHub** — fine-grained PAT scoped to one repo. Access level (read-only or write) is chosen at install time. In read-only mode the PAT can't mutate the repo, period — server-side. Falls back to a classic PAT if your org disables FGPATs.
-- **Git policy** — at install you pick: read-only (agent edits files; you push) or write (agent commits/pushes/opens PRs). In write mode, two opt-in toggles default off: direct pushes to the default branch, and branch deletes. Both are enforced by a `pre-push` hook in the cloned repo plus a Claude-level deny on `git push --no-verify` (the only non-brittle bypass).
-- **Secrets** — one of {Doppler, Infisical, none}, with a read-only service token scoped to one project + dev environment. The other CLI is not installed.
-- **Supply chain** — `sfw` (Socket Firewall) wraps npm/pnpm/yarn/pip/uv/cargo and blocks known-malicious packages at install. `ignore-scripts=true` is set globally as a second layer.
-- **Per-machine isolation** — each repo gets its own Orbstack machine with "Isolate machine" enabled. A compromise in one cannot reach another's tokens or your Mac's files.
-- **Claude Code** — `defaultMode: auto`; destructive ops (`git push --force`, `git reset --hard`, `npm publish`) are denied.
-
-## Trying the flow without installing anything
-
-Use `--dry-run` (`-n`) to walk through the prompts and see every command/file the installer *would* run, without touching your system. Useful for validating the UI on a Mac before running for real in a devbox.
+## Dry run
 
 ```bash
-# from a clone of this repo
 bun install
 bun src/cli.ts --dry-run
 ```
 
-Token-paste prompts still ask for input (any non-empty string passes validation under dry-run), so the full flow plays out.
+Walks the prompts and prints every command/file the installer would run, without touching your system.
 
 ## Known gaps
 
-- `bun install` is not yet wrapped by Socket Firewall — prefer pnpm where you have the choice.
-- `ignore-scripts=true` breaks packages that legitimately need scripts (e.g. `sharp`, `puppeteer`). Per-package escape: `pnpm install --ignore-scripts=false <pkg>`.
+- `bun install` is not wrapped by Socket Firewall. Prefer pnpm where you can.
+- `ignore-scripts=true` breaks packages that legitimately need scripts (`sharp`, `puppeteer`, …). Per-package escape: `pnpm install --ignore-scripts=false <pkg>`.
 - If `socket.dev` is unreachable, `sfw` fails closed. Emergency bypass: `unalias npm` for one shell.
+
+</invoke>

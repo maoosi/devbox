@@ -77,13 +77,23 @@ export function parseRepoUrl(
   return { owner: m[1]!, name: m[2]!, slug: m[2]! };
 }
 
-// URL params here follow GitHub's documented spec for fine-grained PAT pre-fill.
-// We don't set `expires_in` because it forces the form into "Custom" mode,
-// which is harder to read than just leaving the default. There is no
-// documented param for prefilling repo selection — the user picks the repo
-// manually. `target_name` narrows the resource owner dropdown.
+// We only pre-fill `name` and `description`. Resource owner, repository
+// access, and permissions are walked through manually in the prompt copy
+// (see github.ts).
 //
-// `access` controls whether the token can mutate the repo:
+// Why not pre-fill more? GitHub's `target_name` param visually selects the
+// resource-owner dropdown, but doesn't commit the form state — submitted
+// tokens silently fall back to the user's personal account, granting access
+// to 0 org repos. Forcing the user to toggle the dropdown manually drops the
+// pre-filled permissions in the same form. Until the upstream bug is fixed
+// we keep the URL minimal. See:
+//   https://github.com/orgs/community/discussions/188111
+//
+// When that bug is fixed, the richer pre-fill is preserved below — uncomment
+// `ghFineGrainedTokenUrlFull`, swap the call site in github.ts, and simplify
+// the manual instructions.
+//
+// `access` is plumbed for the future-rich version; the minimal one ignores it.
 //   - "read"  → contents/PRs are read-only; agent can fetch + post nothing
 //   - "write" → contents=write + PRs=write so the agent can push and open PRs
 export function ghFineGrainedTokenUrl(opts: {
@@ -92,20 +102,36 @@ export function ghFineGrainedTokenUrl(opts: {
   ownerLogin: string;
   access: "read" | "write";
 }): string {
+  void opts.ownerLogin;
+  void opts.access;
   const params = new URLSearchParams({
     name: opts.name,
     description: opts.description,
-    target_name: opts.ownerLogin,
-    metadata: "read",
-    contents: opts.access,
-    pull_requests: opts.access,
-    issues: "read",
-    commit_statuses: "read",
-    actions: "read",
-    discussions: "read",
   });
   return `https://github.com/settings/personal-access-tokens/new?${params.toString()}`;
 }
+
+// Restore once https://github.com/orgs/community/discussions/188111 is fixed.
+// export function ghFineGrainedTokenUrlFull(opts: {
+//   name: string;
+//   description: string;
+//   ownerLogin: string;
+//   access: "read" | "write";
+// }): string {
+//   const params = new URLSearchParams({
+//     name: opts.name,
+//     description: opts.description,
+//     target_name: opts.ownerLogin,
+//     metadata: "read",
+//     contents: opts.access,
+//     pull_requests: opts.access,
+//     issues: "read",
+//     commit_statuses: "read",
+//     actions: "read",
+//     discussions: "read",
+//   });
+//   return `https://github.com/settings/personal-access-tokens/new?${params.toString()}`;
+// }
 
 export function ghClassicTokenUrl(opts: { name: string }): string {
   const params = new URLSearchParams({

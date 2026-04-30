@@ -29,18 +29,33 @@ async function collectToken(ctx: Ctx): Promise<string> {
 
   p.log.message(
     [
-      `GitHub fine-grained token (${access}-only contents/PRs) — open this URL:`,
+      `GitHub fine-grained token — open this URL:`,
       `  ${fgUrl}`,
       "",
-      "Name, description, owner, and permissions are pre-filled.",
+      `Only the token name and description are pre-filled. The rest must be set`,
+      `manually below — a known GitHub bug (community/discussions/188111) makes`,
+      `pre-filling owner + permissions unreliable for org repos.`,
     ].join("\n"),
   );
+  const contentsPerm = access === "write" ? "Read and write" : "Read-only";
   p.log.warn(
     [
-      `Repository access can't be pre-filled — set it manually in the form:`,
-      `  1. Under "Repository access", choose "Only select repositories"`,
-      `  2. Pick ${ctx.repo.owner}/${ctx.repo.name}`,
-      "",
+      `Set these in the form, top to bottom:`,
+      ``,
+      `  1. Resource owner: ${ctx.repo.owner}`,
+      `     (the dropdown defaults to your personal account — change it)`,
+      ``,
+      `  2. Repository access: "Only select repositories" → ${ctx.repo.owner}/${ctx.repo.name}`,
+      ``,
+      `  3. Permissions → Repository permissions:`,
+      `       • Metadata:        Read-only  (auto-added)`,
+      `       • Contents:        ${contentsPerm}`,
+      `       • Pull requests:   ${contentsPerm}`,
+      `       • Issues:          Read-only`,
+      `       • Commit statuses: Read-only`,
+      `       • Actions:         Read-only`,
+      `       • Discussions:     Read-only`,
+      ``,
       `Then click Generate at the bottom and paste the token below.`,
     ].join("\n"),
   );

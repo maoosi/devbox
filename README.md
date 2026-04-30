@@ -1,4 +1,4 @@
-# devbox
+# 👾📦 Devbox
 
 Per-project Orbstack devbox for running Claude Code agents with scoped credentials.
 

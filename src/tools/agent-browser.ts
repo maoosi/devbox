@@ -3,7 +3,7 @@ import type { Tool } from "./index.ts";
 
 const tool: Tool = {
   id: "agent-browser",
-  label: "agent-browser (UI/console for agents)",
+  label: "agent-browser (headless browser for agents)",
   default: true,
   required: false,
   async run() {

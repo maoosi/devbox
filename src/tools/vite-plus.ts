@@ -3,7 +3,7 @@ import type { Tool } from "./index.ts";
 
 const tool: Tool = {
   id: "vite-plus",
-  label: "Vite+ (alpha)",
+  label: "Vite+ (unified JS toolchain)",
   default: true,
   required: false,
   async run() {

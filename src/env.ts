@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";
+import { isDryRun, note } from "./dryrun.ts";
 
 export const HOME = homedir();
 export const CONFIG_DIR = path.join(HOME, ".config", "devbox");
@@ -14,6 +15,10 @@ const SOURCE_LINE = `for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && . "$f"; done`;
 export type EnvVars = Record<string, string>;
 
 export async function writeEnv(vars: EnvVars): Promise<void> {
+  if (isDryRun()) {
+    note("write", `${ENV_FILE} (${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`);
+    return;
+  }
   await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
   const body = Object.entries(vars)
     .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
@@ -27,6 +32,11 @@ export async function writeShellInit(opts: {
   exports?: string[];
   aliases?: string[];
 }): Promise<void> {
+  if (isDryRun()) {
+    note("write", `${DEVBOX_SH} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases)`);
+    note("append", `${BASHRC} (source line, if missing)`);
+    return;
+  }
   await fs.mkdir(BASHRC_D, { recursive: true });
   const lines: string[] = [
     `# managed by devbox install — do not edit by hand`,
@@ -60,19 +70,27 @@ export function parseRepoUrl(
   return { owner: m[1]!, name: m[2]!, slug: m[2]! };
 }
 
+// URL params here follow GitHub's documented spec for fine-grained PAT pre-fill.
+// We don't set `expires_in` because it forces the form into "Custom" mode,
+// which is harder to read than just leaving the default. There is no
+// documented param for prefilling repo selection — the user picks the repo
+// manually. `target_name` narrows the resource owner dropdown.
 export function ghFineGrainedTokenUrl(opts: {
   name: string;
+  description: string;
   ownerLogin: string;
-  expirationDays?: number;
 }): string {
   const params = new URLSearchParams({
     name: opts.name,
-    expiration: String(opts.expirationDays ?? 90),
+    description: opts.description,
     target_name: opts.ownerLogin,
+    metadata: "read",
     contents: "write",
     pull_requests: "write",
-    issues: "write",
-    metadata: "read",
+    issues: "read",
+    commit_statuses: "read",
+    actions: "read",
+    discussions: "read",
   });
   return `https://github.com/settings/personal-access-tokens/new?${params.toString()}`;
 }

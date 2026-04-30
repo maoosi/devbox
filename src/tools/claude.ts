@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { sh } from "../exec.ts";
 import { HOME } from "../env.ts";
+import { isDryRun, note } from "../dryrun.ts";
 import type { Tool } from "./index.ts";
 
 const CLAUDE_DIR = path.join(HOME, ".claude");
@@ -17,6 +18,10 @@ export type McpServer = {
 
 // Writes a fresh ~/.claude/settings.json. Fresh-VM only — no merge.
 async function writeSettings(mcpServers: Record<string, McpServer>): Promise<void> {
+  if (isDryRun()) {
+    note("write", `${SETTINGS_PATH} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"})`);
+    return;
+  }
   await fs.mkdir(CLAUDE_DIR, { recursive: true });
   const settings = {
     includeCoAuthoredBy: false,

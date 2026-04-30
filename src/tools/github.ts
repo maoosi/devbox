@@ -23,15 +23,24 @@ async function tokenWorks(token: string): Promise<boolean> {
 
 async function collectToken(ctx: Ctx): Promise<string> {
   const name = `devbox-${ctx.repo.slug}`;
-  const fgUrl = ghFineGrainedTokenUrl({ name, ownerLogin: ctx.repo.owner });
+  const description = `Used by orbstack devbox machine for ${ctx.repo.owner}/${ctx.repo.name}`;
+  const fgUrl = ghFineGrainedTokenUrl({ name, description, ownerLogin: ctx.repo.owner });
 
   p.log.message(
     [
-      "GitHub fine-grained token:",
+      "GitHub fine-grained token — open this URL:",
       `  ${fgUrl}`,
-      `  - Repository access: only ${ctx.repo.owner}/${ctx.repo.name}`,
-      `  - Permissions: Contents RW, Pull requests RW, Issues RW, Metadata R`,
-      `  - Click Generate, then paste the token below.`,
+      "",
+      "Name, description, owner, and permissions are pre-filled.",
+    ].join("\n"),
+  );
+  p.log.warn(
+    [
+      `Repository access can't be pre-filled — set it manually in the form:`,
+      `  1. Under "Repository access", choose "Only select repositories"`,
+      `  2. Pick ${ctx.repo.owner}/${ctx.repo.name}`,
+      "",
+      `Then click Generate at the bottom and paste the token below.`,
     ].join("\n"),
   );
   let token = await pasteToken("GitHub token");

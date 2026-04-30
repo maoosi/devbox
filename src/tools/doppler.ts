@@ -20,11 +20,18 @@ const tool: Tool = {
 
     p.log.message(
       [
-        "Doppler service token:",
+        "Doppler service token — open your dashboard:",
         "  https://dashboard.doppler.com/",
-        "  - Pick the project + dev config for this repo.",
-        "  - Access tab → Generate Service Token, role Read only.",
-        `  - Name it devbox-${ctx.repo.slug}, then copy the token (starts with dp.st.).`,
+      ].join("\n"),
+    );
+    p.log.warn(
+      [
+        `Doppler URLs use opaque IDs, so nothing can be pre-filled. In the dashboard:`,
+        `  1. Open the project + dev config for ${ctx.repo.owner}/${ctx.repo.name}`,
+        `  2. Access tab → Generate Service Token`,
+        `  3. Role: Read only. Name: devbox-${ctx.repo.slug}`,
+        "",
+        `Copy the token (starts with dp.st.) and paste below.`,
       ].join("\n"),
     );
     const v = await p.password({

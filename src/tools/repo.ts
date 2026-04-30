@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { run } from "../exec.ts";
+import { isDryRun, note } from "../dryrun.ts";
 import type { Tool } from "./index.ts";
 
 const tool: Tool = {
@@ -10,6 +11,11 @@ const tool: Tool = {
   required: true,
   async run(ctx) {
     const target = `/home/devbox/repos/${ctx.repo.slug}`;
+    if (isDryRun()) {
+      note("clone", `${ctx.repo.url} → ${target}`);
+      note("write", `${path.join(target, "CLAUDE.md")} (per-project template, if absent)`);
+      return;
+    }
     await fs.mkdir("/home/devbox/repos", { recursive: true });
     await run("git", ["clone", ctx.repo.url, target], {
       env: { GH_TOKEN: ctx.tokens.GH_TOKEN, GIT_TERMINAL_PROMPT: "0" },

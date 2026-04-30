@@ -36,6 +36,18 @@ The installer asks for the repo URL, picks a secrets manager, and walks you thro
 - **Per-machine isolation** — each repo gets its own Orbstack machine with "Isolate machine" enabled. A compromise in one cannot reach another's tokens or your Mac's files.
 - **Claude Code** — `defaultMode: auto`; destructive ops (`git push --force`, `git reset --hard`, `npm publish`) are denied.
 
+## Trying the flow without installing anything
+
+Use `--dry-run` (`-n`) to walk through the prompts and see every command/file the installer *would* run, without touching your system. Useful for validating the UI on a Mac before running for real in a devbox.
+
+```bash
+# from a clone of this repo
+bun install
+bun src/cli.ts --dry-run
+```
+
+Token-paste prompts still ask for input (any non-empty string passes validation under dry-run), so the full flow plays out.
+
 ## Known gaps
 
 - `bun install` is not yet wrapped by Socket Firewall — prefer pnpm where you have the choice.

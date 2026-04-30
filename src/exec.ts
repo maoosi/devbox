@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { isDryRun, note } from "./dryrun.ts";
 
 export type RunOptions = {
   env?: Record<string, string | undefined>;
@@ -14,6 +15,10 @@ export async function run(
   args: string[],
   opts: RunOptions = {},
 ): Promise<RunResult> {
+  if (isDryRun()) {
+    note("exec", `${cmd} ${args.join(" ")}`);
+    return { code: 0, stdout: "", stderr: "" };
+  }
   const child = spawn(cmd, args, {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,

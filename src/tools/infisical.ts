@@ -16,12 +16,19 @@ const tool: Tool = {
 
     p.log.message(
       [
-        "Infisical machine identity token:",
+        "Infisical machine identity token — open your dashboard:",
         "  https://app.infisical.com/",
-        "  - Open your project for this repo.",
-        "  - Settings → Access Control → Machine Identities → Create.",
-        `  - Name it devbox-${ctx.repo.slug}, grant read access to the dev environment only.`,
-        "  - Use Universal Auth, copy the token.",
+      ].join("\n"),
+    );
+    p.log.warn(
+      [
+        `Infisical URLs use opaque IDs, so nothing can be pre-filled. In the dashboard:`,
+        `  1. Open your project for ${ctx.repo.owner}/${ctx.repo.name}`,
+        `  2. Settings → Access Control → Machine Identities → Create`,
+        `  3. Name: devbox-${ctx.repo.slug}. Read access to the dev environment only.`,
+        `  4. Use Universal Auth and copy the token.`,
+        "",
+        `Paste the token below.`,
       ].join("\n"),
     );
     const v = await p.password({

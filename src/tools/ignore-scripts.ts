@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { run } from "../exec.ts";
 import { HOME } from "../env.ts";
+import { isDryRun, note } from "../dryrun.ts";
 import type { Tool } from "./index.ts";
 
 // Block install-time exfil from postinstall scripts. This pairs with Socket Firewall.
@@ -15,6 +16,10 @@ const tool: Tool = {
     await run("pnpm", ["config", "set", "ignore-scripts", "true"], { quiet: true, allowFail: true });
 
     const bunfig = path.join(HOME, ".bunfig.toml");
+    if (isDryRun()) {
+      note("write", `${bunfig} ([install] ignoreScripts = true)`);
+      return;
+    }
     let body = "";
     try {
       body = await fs.readFile(bunfig, "utf8");

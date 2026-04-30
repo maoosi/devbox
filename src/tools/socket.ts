@@ -5,7 +5,7 @@ import type { Tool } from "./index.ts";
 // packages at install. Bun is not yet supported.
 const tool: Tool = {
   id: "socket",
-  label: "Socket Firewall (npm/pnpm/pip/cargo)",
+  label: "Socket Firewall (blocks malicious packages)",
   default: true,
   required: false,
   async run(ctx) {

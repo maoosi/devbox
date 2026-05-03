@@ -9,8 +9,11 @@ const tool: Tool = {
   default: true,
   required: false,
   async run(ctx) {
+    // Install.sh sets `umask 077`, which sudo inherits. Without explicit chmod,
+    // the keyring lands as root:root mode 0600 → apt's `_apt` user can't read
+    // it → GPG verification fails → `apt-get update` exits 100.
     await sh(
-      "curl -sLf --retry 3 --tlsv1.2 --proto '=https' 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo gpg --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg",
+      "curl -sLf --retry 3 --tlsv1.2 --proto '=https' 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' | sudo gpg --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg && sudo chmod go+r /usr/share/keyrings/doppler-archive-keyring.gpg",
       { quiet: true },
     );
     await sh(

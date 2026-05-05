@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { isDryRun, note } from "./dryrun.ts";
+import { run, sh } from "./exec.ts";
 
 // Resolved at call time — process.env.HOME overrides homedir() so tests can
 // point the installer at a sandbox tempdir without forking a child process.
@@ -49,6 +50,51 @@ export async function writeEnv(vars: EnvVars): Promise<void> {
     .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
     .join("\n");
   await fs.writeFile(envPath, body + "\n", { mode: 0o600 });
+}
+
+// PAM loads /etc/environment for every session type — login/non-login,
+// interactive/non-interactive — so remote SSH commands (e.g. Claude Code
+// Desktop's SSH integration, which uses non-interactive exec) inherit these
+// vars without sourcing .bashrc. Without this, GH_TOKEN is unset in those
+// sessions and `gh` falls back to "not logged in".
+//
+// Tradeoff: tokens land in a system-wide file. We tighten it to mode 0600
+// root:root — PAM runs as root and loads the file before dropping to the
+// user, so the user's session env still has the vars. On a single-user
+// devbox VM, the trust boundary is the same as ~/.config/devbox/env.
+const ETC_ENV = "/etc/environment";
+const ETC_ENV_BEGIN = "# BEGIN devbox";
+const ETC_ENV_END = "# END devbox";
+
+export async function writeSystemEnv(vars: EnvVars): Promise<void> {
+  if (isDryRun()) {
+    note("write", `${ETC_ENV} (devbox block, ${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`);
+    return;
+  }
+  // Read existing /etc/environment via sudo so we work whether mode is 0644
+  // (Ubuntu default) or already 0600 root-owned from a prior install. allowFail
+  // covers the rare case the file doesn't exist yet.
+  const read = await run("sudo", ["cat", ETC_ENV], { quiet: true, allowFail: true });
+  const existing = read.code === 0 ? read.stdout : "";
+  const blockRe = new RegExp(`\\n?${ETC_ENV_BEGIN}[\\s\\S]*?${ETC_ENV_END}\\n?`, "g");
+  const stripped = existing.replace(blockRe, "");
+  const block = [
+    ETC_ENV_BEGIN,
+    ...Object.entries(vars).map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`),
+    ETC_ENV_END,
+  ].join("\n");
+  const trimmed = stripped.replace(/\n+$/, "");
+  const merged = (trimmed === "" ? "" : trimmed + "\n") + block + "\n";
+  // Stage in a 0600 user-owned tmp file under the user's already-restricted
+  // config dir, then atomically replace /etc/environment with sudo install.
+  const tmp = path.join(configDir(), ".etc-environment.tmp");
+  await fs.mkdir(configDir(), { recursive: true, mode: 0o700 });
+  await fs.writeFile(tmp, merged, { mode: 0o600 });
+  try {
+    await sh(`sudo install -m 0600 -o root -g root ${tmp} ${ETC_ENV}`, { quiet: true });
+  } finally {
+    await fs.rm(tmp, { force: true });
+  }
 }
 
 // Writes a single ~/.bashrc.d/devbox.sh that loads the env file and sets aliases/exports.

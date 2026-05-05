@@ -6,7 +6,7 @@ const tool: Tool = {
   label: "System packages",
   default: true,
   required: true,
-  async run() {
+  async run(ctx) {
     await run("sudo", ["apt-get", "update", "-qq"], { quiet: true });
     await run(
       "sudo",
@@ -31,6 +31,7 @@ const tool: Tool = {
       ],
       { quiet: true },
     );
+    ctx.aliases.push(`alias cls="clear"`);
   },
 };
 

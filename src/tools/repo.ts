@@ -7,7 +7,9 @@ import type { Tool, GitWritePolicy } from "./index.ts";
 
 // One devbox = one repo. The clone always lives at ~/repo so reconnect
 // commands and conventions docs are identical across every devbox you spin up.
-export function cloneDir(): string { return path.join(home(), "repo"); }
+const REPO_DIRNAME = "repo";
+export function cloneDir(): string { return path.join(home(), REPO_DIRNAME); }
+export function cloneDirDisplay(): string { return `~/${REPO_DIRNAME}`; }
 
 // Pre-push hook script. The default-branch name is resolved at run time so
 // "main" / "master" / "trunk" are all handled. Sentinel SHA = branch deletion.

@@ -4,8 +4,8 @@ import * as path from "node:path";
 import * as p from "@clack/prompts";
 import { tools, selectTools } from "./tools/index.ts";
 import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
-import { home, parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
-import { cloneDir } from "./tools/repo.ts";
+import { home, parseRepoUrl, writeEnv, writeShellInit, writeSystemEnv } from "./env.ts";
+import { cloneDir, cloneDirDisplay } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
 import { loadScenario, type Scenario } from "./scenario.ts";
@@ -247,6 +247,10 @@ async function main(): Promise<void> {
       allowFail: true,
     });
     await writeEnv(ctx.tokens);
+    // Mirror tokens to /etc/environment so non-interactive SSH sessions
+    // (e.g. Claude Code Desktop's remote integration) inherit GH_TOKEN
+    // without needing .bashrc to source.
+    await writeSystemEnv(ctx.tokens);
     await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
   }
 
@@ -285,7 +289,9 @@ async function main(): Promise<void> {
       p.log.info(
         "Starting `claude login` — follow the OAuth flow in your browser."
       );
-      const code = await runInteractive("claude", ["login"]);
+      // Run from ~/repo so Claude Code's first-run trust prompt records the
+      // actual work directory as trusted (no nag on first `claude` in-repo).
+      const code = await runInteractive("claude", ["login"], { cwd: cloneDir() });
       if (code !== 0) {
         p.log.warn("`claude login` did not complete. Run it manually later.");
       }
@@ -294,16 +300,30 @@ async function main(): Promise<void> {
 
   // Reconnect tips. Orbstack auto-registers each VM under `<machine>@orb`
   // on the host's ssh config, so a plain `ssh` reconnect just works.
-  const target = cloneDir();
   p.note(
     [
       `# From your Mac (Orbstack):`,
       `ssh devbox-${repo.slug}@orb`,
       `# then once connected:`,
-      `cd ${target}`,
+      `cd ${cloneDirDisplay()}`,
     ].join("\n"),
     "Reconnect later"
   );
+
+  // Claude Code Desktop's "SSH Hosts" UI takes the four fields below.
+  // Orbstack exposes each VM on 127.0.0.1:32222 with a generated key on the
+  // Mac host; the @orb shortcut above doesn't fit that form, so spell it out.
+  if (selected.some((t) => t.id === "claude")) {
+    p.note(
+      [
+        `Name:          devbox-${repo.slug}`,
+        `SSH Host:      devbox-${repo.slug}@127.0.0.1`,
+        `SSH Port:      32222`,
+        `Identity File: ~/.orbstack/ssh/id_ed25519`,
+      ].join("\n"),
+      "Connect from Claude Code Desktop"
+    );
+  }
 
   p.outro(
     "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."

@@ -63,13 +63,17 @@ export async function has(cmd: string): Promise<boolean> {
 
 // For commands that need a real TTY (e.g. claude login's OAuth flow).
 // stdio:'inherit' so the user sees prompts and can interact directly.
-export async function runInteractive(cmd: string, args: string[]): Promise<number> {
+export async function runInteractive(
+  cmd: string,
+  args: string[],
+  opts: { cwd?: string } = {},
+): Promise<number> {
   if (isDryRun()) {
     note("interactive", `${cmd} ${args.join(" ")}`);
     return 0;
   }
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: "inherit" });
+    const child = spawn(cmd, args, { stdio: "inherit", cwd: opts.cwd });
     child.on("close", (code) => resolve(code ?? 0));
     child.on("error", () => resolve(1));
   });

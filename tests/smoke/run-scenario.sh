@@ -62,6 +62,15 @@ docker run --rm \
     echo "════════ assertions: fresh ════════"
     /tmp/assertions.sh "$SCENARIO_ID" fresh /tmp/scenario.json
 
+    # Skills idempotency probe: drop a marker into the shipped skill before
+    # the snapshot, so the marker is part of the baseline. The grep-based
+    # assertion confirms the marker survived rerun; the tar diff confirms
+    # the rest of the tree is byte-identical. Inserting the marker after
+    # the snapshot would make tar diff flag SKILL.md as mutated.
+    if [ -f "$HOME/.claude/skills/code-review/SKILL.md" ]; then
+      echo "# devbox-smoke-marker $(date -u +%s)" >> "$HOME/.claude/skills/code-review/SKILL.md"
+    fi
+
     echo "════════ snapshot ════════"
     # Snapshot a known set of devbox-managed paths. Track the bashrc hash
     # separately — that is the file most likely to be mutated by upstream
@@ -73,13 +82,6 @@ docker run --rm \
       /etc/apt/sources.list.d \
       $([ -d "$HOME/.claude" ] && echo "$HOME/.claude") \
       $([ -f "$HOME/.bunfig.toml" ] && echo "$HOME/.bunfig.toml")
-
-    # Skills idempotency probe: drop a marker into the shipped skill, then
-    # check after rerun that the marker is intact (skills tool must not
-    # clobber user edits).
-    if [ -f "$HOME/.claude/skills/code-review/SKILL.md" ]; then
-      echo "# devbox-smoke-marker $(date -u +%s)" >> "$HOME/.claude/skills/code-review/SKILL.md"
-    fi
 
     echo "════════ rerun install ════════"
     bash /srv/devbox/install.sh --scenario /tmp/scenario.json 2>&1 | tee /tmp/devbox-rerun.log

@@ -1,6 +1,6 @@
 {
   "name": "devbox",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Per-project devbox for running AI agents safely on any Ubuntu machine.",
   "type": "module",
   "private": true,

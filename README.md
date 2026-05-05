@@ -16,7 +16,7 @@ The installer asks for the repo URL, picks a secrets manager, and walks you thro
 
 Devbox runs on any Ubuntu machine, but the cleanest setup is one Orbstack VM per repo on a Mac:
 
-- In the **Orbstack app**, create a new machine: Ubuntu, latest, **Isolate machine** on (disables file sharing + host integration so a compromise stays in the VM).
+- In the **Orbstack app**, create a new machine: Ubuntu, latest, arm64, **Isolate machine**.
 - Open its shell, run the install command above.
 - Reconnect later with `ssh devbox-<slug>@orb`, then `cd ~/repo`.
 

@@ -24,8 +24,10 @@ IMAGE="devbox-smoke:latest"
 
 # Native architecture — host arch matches CI's ubuntu-latest most of the time
 # (x86_64), and on ARM Macs we still get a 10× speedup vs amd64-under-qemu.
-# agent-browser's browser-binary download is the only step without an ARM64
-# build; smoke skips it via DEVBOX_SKIP_BROWSER_DEPS=1.
+# DEVBOX_SKIP_BROWSER_DEPS=1 skips the Chromium download regardless of arch
+# (Chrome for Testing on x64, Playwright Chromium on ARM64) — it's a
+# 100–150MB pull that adds noise to smoke runs without exercising any
+# devbox-specific logic.
 echo ">>> building $IMAGE (cached on first build)"
 docker build -q -t "$IMAGE" -f "$SMOKE_DIR/Dockerfile" "$SMOKE_DIR" >/dev/null
 

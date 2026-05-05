@@ -67,6 +67,18 @@ const tool: Tool = {
       /* fresh */
     }
 
+    // `git` ignores GH_TOKEN — it's a `gh` CLI variable. Without a credential
+    // helper, the clone falls back to prompting for a username and aborts under
+    // GIT_TERMINAL_PROMPT=0. `gh auth setup-git` writes a global credential
+    // helper that delegates to `gh auth git-credential`, which honors GH_TOKEN.
+    // This also makes future `git push` / `fetch` work in any shell that has
+    // GH_TOKEN exported (which ~/.config/devbox/env provides). Idempotent —
+    // re-runs just rewrite the same helper line.
+    await run("gh", ["auth", "setup-git"], {
+      env: { GH_TOKEN: ctx.tokens.GH_TOKEN },
+      quiet: true,
+    });
+
     if (isDryRun()) {
       if (alreadyCloned) note("skip clone", `${target} already exists`);
       else note("clone", `${ctx.repo.url} → ${target}`);

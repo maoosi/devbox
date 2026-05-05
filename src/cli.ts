@@ -204,29 +204,63 @@ async function main(): Promise<void> {
     selectedToolIds: new Set(selected.map((t) => t.id)),
   };
 
-  for (const tool of selected) {
-    const s = p.spinner();
-    s.start(tool.label);
-    try {
-      await tool.run(ctx);
-      s.stop(`${tool.label} ✓`);
-    } catch (err) {
-      s.stop(`${tool.label} ✗`);
-      p.log.error(err instanceof Error ? err.message : String(err));
-      process.exit(1);
+  // Required tools that fail abort the install — the box is unusable without
+  // them. Optional tool failures are non-fatal: the install completes, the
+  // failure is shown in the end-of-run summary, and the user gets a working
+  // devbox minus that one tool. Without this, a single regression in any
+  // optional tool (e.g. agent-browser ARM64) takes the whole flow down and
+  // tokens never get written.
+  type ToolResult =
+    | { id: string; label: string; status: "ok" }
+    | { id: string; label: string; status: "failed"; error: string };
+  const results: ToolResult[] = [];
+  let aborted: { tool: Tool; error: unknown } | null = null;
+
+  try {
+    for (const tool of selected) {
+      const s = p.spinner();
+      s.start(tool.label);
+      try {
+        await tool.run(ctx);
+        s.stop(`${tool.label} ✓`);
+        results.push({ id: tool.id, label: tool.label, status: "ok" });
+      } catch (err) {
+        s.stop(`${tool.label} ✗`);
+        const msg = err instanceof Error ? err.message : String(err);
+        p.log.error(msg);
+        results.push({ id: tool.id, label: tool.label, status: "failed", error: msg });
+        if (tool.required) {
+          aborted = { tool, error: err };
+          break;
+        }
+      }
     }
+  } finally {
+    // Persist whatever state we have, even on abort. Order matters:
+    // git identity may already be useful to a partially-set-up box.
+    await run("git", ["config", "--global", "user.name", git.name], {
+      quiet: true,
+      allowFail: true,
+    });
+    await run("git", ["config", "--global", "user.email", git.email], {
+      quiet: true,
+      allowFail: true,
+    });
+    await writeEnv(ctx.tokens);
+    await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
   }
 
-  // Apply git identity now that git is installed.
-  await run("git", ["config", "--global", "user.name", git.name], {
-    quiet: true,
-  });
-  await run("git", ["config", "--global", "user.email", git.email], {
-    quiet: true,
-  });
+  if (aborted) {
+    p.log.error(`Required tool failed: ${aborted.tool.label}. Install aborted.`);
+    process.exit(1);
+  }
 
-  await writeEnv(ctx.tokens);
-  await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
+  const failed = results.filter((r): r is Extract<ToolResult, { status: "failed" }> => r.status === "failed");
+  const okIds = results.filter((r) => r.status === "ok").map((r) => r.id).join(", ");
+  const summaryLines: string[] = [];
+  if (okIds) summaryLines.push(`✓ ${okIds}`);
+  for (const f of failed) summaryLines.push(`⚠ ${f.id} — ${f.error.split("\n")[0]}`);
+  if (summaryLines.length > 0) p.note(summaryLines.join("\n"), "Tools");
 
   // Final manual step: claude login (Anthropic OAuth — no API alternative).
   // Only when Claude Code was actually installed, and only when not already
@@ -258,21 +292,15 @@ async function main(): Promise<void> {
     }
   }
 
-  // Reconnect tips. Devbox runs on any Ubuntu host; we surface the Orbstack-on-Mac
-  // path (the typical setup) plus a plain-SSH fallback. The shell function is
-  // idempotent — paste it once and every future devbox reconnects with `devbox <slug>`.
+  // Reconnect tips. Orbstack auto-registers each VM under `<machine>@orb`
+  // on the host's ssh config, so a plain `ssh` reconnect just works.
   const target = cloneDir();
   p.note(
     [
-      `# One-shot from your Mac (Orbstack):`,
-      `orb shell devbox-${repo.slug} -d ${target}`,
-      ``,
-      `# Or paste this into your Mac's ~/.zshrc — works for every devbox:`,
-      `devbox() { orb shell "devbox-$1" -d ${target}; }`,
-      `# then: devbox ${repo.slug}`,
-      ``,
-      `# Plain SSH (any host):`,
-      `ssh <host> -t "cd ${target} && exec bash -l"`,
+      `# From your Mac (Orbstack):`,
+      `ssh devbox-${repo.slug}@orb`,
+      `# then once connected:`,
+      `cd ${target}`,
     ].join("\n"),
     "Reconnect later"
   );

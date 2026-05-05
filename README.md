@@ -1,6 +1,6 @@
 # 👾📦 Devbox
 
-**Per-project devbox for running AI agents safely on any fresh Ubuntu machine.**
+**Per-project devbox for running AI agents safely on any fresh Ubuntu ARM64 machine.**
 
 ## 🚀 Quick start
 

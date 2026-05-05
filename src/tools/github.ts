@@ -94,6 +94,19 @@ const tool: Tool = {
     );
     await sh("sudo apt-get update -qq && sudo apt-get install -y -qq gh", { quiet: true });
 
+    // Smoke-test mode: skip prompt + validation. See comment in doppler.ts.
+    if (process.env.DEVBOX_SKIP_TOKENS === "1") {
+      const reused = (await readEnv()).GH_TOKEN;
+      if (reused) {
+        p.log.info("Reusing existing GitHub token from ~/.config/devbox/env.");
+        ctx.tokens.GH_TOKEN = reused;
+      } else {
+        p.log.info("Skipping GitHub token (DEVBOX_SKIP_TOKENS).");
+        ctx.tokens.GH_TOKEN = "smoke-placeholder";
+      }
+      return;
+    }
+
     // Re-run path: reuse a previously-stored GH_TOKEN if it still validates
     // against the target repo. Skips the manual PAT minting flow and avoids
     // piling up dead tokens in GitHub's settings UI.

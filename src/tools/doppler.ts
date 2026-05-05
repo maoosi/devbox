@@ -22,6 +22,22 @@ const tool: Tool = {
     );
     await sh("sudo apt-get update -qq && sudo apt-get install -y -qq doppler", { quiet: true });
 
+    // Smoke-test mode: skip prompt + validation. Reuse stored token if present
+    // (so the "Reusing" log line still fires on a rerun) else stash a
+    // placeholder so writeEnv produces a syntactically valid env file. No real
+    // tokens are ever needed in smoke tests.
+    if (process.env.DEVBOX_SKIP_TOKENS === "1") {
+      const reused = (await readEnv()).DOPPLER_TOKEN;
+      if (reused) {
+        p.log.info("Reusing existing Doppler token from ~/.config/devbox/env.");
+        ctx.tokens.DOPPLER_TOKEN = reused;
+      } else {
+        p.log.info("Skipping Doppler token (DEVBOX_SKIP_TOKENS).");
+        ctx.tokens.DOPPLER_TOKEN = "smoke-placeholder";
+      }
+      return;
+    }
+
     // Re-run path: reuse a previously-stored DOPPLER_TOKEN if it still works.
     const stored = (await readEnv()).DOPPLER_TOKEN;
     if (stored) {

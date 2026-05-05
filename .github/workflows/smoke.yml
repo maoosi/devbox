@@ -1,0 +1,27 @@
+name: smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test tests/unit tests/integration
+
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [s1-minimal, s2-doppler, s3-infisical-max]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke scenario ${{ matrix.scenario }}
+        run: tests/smoke/run-scenario.sh ${{ matrix.scenario }}

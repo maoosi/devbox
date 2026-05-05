@@ -8,7 +8,6 @@ import {
   makeSandbox,
   cleanupSandbox,
   applyEnv,
-  readStubLog,
   makeCtx,
   type Sandbox,
 } from "./_helpers.ts";
@@ -37,13 +36,9 @@ describe("socket tool", () => {
     ]);
   });
 
-  test("invokes `npm install -g sfw` via stubs", async () => {
-    sb = await makeSandbox();
-    restore = applyEnv(sb);
-    await socket.run(makeCtx());
-    const log = await readStubLog(sb);
-    expect(log).toContain("npm\tinstall\t-g\tsfw");
-  });
+  // The "invokes npm install -g sfw" assertion lives in tests/smoke/ now:
+  // smoke runs the install for real and the resulting sfw aliases are
+  // exercised when ~/.bashrc.d/devbox.sh is sourced.
 });
 
 describe("mcp tool", () => {

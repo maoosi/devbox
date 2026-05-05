@@ -8,7 +8,6 @@ import {
   applyEnv,
   fileExists,
   readJson,
-  readStubLog,
   makeCtx,
   type Sandbox,
 } from "./_helpers.ts";
@@ -74,15 +73,9 @@ describe("claude tool integration", () => {
     expect(s.mcpServers).toEqual(servers);
   });
 
-  test("invokes the install command via stubbed shell", async () => {
-    sb = await makeSandbox();
-    restore = applyEnv(sb);
-    await claudeTool.run(makeCtx());
-    const log = await readStubLog(sb);
-    // The install line is "bun install -g @anthropic-ai/claude-code || npm install -g ...";
-    // bash runs the LHS first; with bun stubbed to exit 0, npm is never reached.
-    expect(log.some((l) => l.startsWith("bun\tinstall\t-g\t@anthropic-ai/claude-code"))).toBe(true);
-  });
+  // The "invokes bun install -g @anthropic-ai/claude-code" assertion lives in
+  // tests/smoke/ now: smoke runs the install for real and asserts that
+  // `claude --version` works on PATH after.
 
   test("dry-run: does not write settings.json", async () => {
     sb = await makeSandbox();

@@ -1,0 +1,9 @@
+{
+  "_comment": "Widest install surface: infisical + write + all extra policies + every optional tool. Catches anything that breaks under the maximally-installed config.",
+  "repo": "https://github.com/octocat/hello",
+  "gitIdentity": { "name": "Smoke Test", "email": "smoke@example.com" },
+  "gitMode": "write",
+  "gitWritePolicy": { "pushMain": true, "deleteBranches": true },
+  "secretsManager": "infisical",
+  "selectedToolIds": ["agent-browser", "socket", "vite-plus", "claude", "skills"]
+}

@@ -8,8 +8,10 @@ import { home, parseRepoUrl, writeEnv, writeShellInit } from "./env.ts";
 import { cloneDir } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
+import { loadScenario, type Scenario } from "./scenario.ts";
 
-async function pickRepo(): Promise<Ctx["repo"]> {
+async function pickRepo(preset?: Scenario["repo"]): Promise<Ctx["repo"]> {
+  if (preset) return preset;
   const v = await p.text({
     message: "GitHub repo URL?",
     placeholder: "https://github.com/owner/repo",
@@ -20,7 +22,8 @@ async function pickRepo(): Promise<Ctx["repo"]> {
   return { url: v as string, ...parseRepoUrl(v as string)! };
 }
 
-async function pickGitMode(): Promise<GitMode> {
+async function pickGitMode(preset?: GitMode): Promise<GitMode> {
+  if (preset) return preset;
   const v = await p.select({
     message: "Should the agent be able to write to git in this repo?",
     initialValue: "write",
@@ -41,7 +44,8 @@ async function pickGitMode(): Promise<GitMode> {
   return v as GitMode;
 }
 
-async function pickGitWritePolicy(): Promise<GitWritePolicy> {
+async function pickGitWritePolicy(preset?: GitWritePolicy): Promise<GitWritePolicy> {
+  if (preset) return preset;
   const v = await p.multiselect({
     message: "Extra write permissions (default: off)",
     options: [
@@ -65,7 +69,8 @@ async function pickGitWritePolicy(): Promise<GitWritePolicy> {
   };
 }
 
-async function pickSecretsManager(): Promise<Ctx["secretsManager"]> {
+async function pickSecretsManager(preset?: Ctx["secretsManager"]): Promise<Ctx["secretsManager"]> {
+  if (preset) return preset;
   const v = await p.select({
     message: "Secrets manager?",
     initialValue: "doppler",
@@ -79,7 +84,8 @@ async function pickSecretsManager(): Promise<Ctx["secretsManager"]> {
   return v as Ctx["secretsManager"];
 }
 
-async function pickGitIdentity(): Promise<{ name: string; email: string }> {
+async function pickGitIdentity(preset?: { name: string; email: string }): Promise<{ name: string; email: string }> {
+  if (preset) return preset;
   // Use whatever git already has as defaults so power users don't retype.
   // `force: true` so the read happens even under dry-run (it's introspection,
   // not an action — and skipping it would mean dry-run never has defaults).
@@ -109,9 +115,10 @@ async function pickGitIdentity(): Promise<{ name: string; email: string }> {
   return { name: (name as string).trim(), email: (email as string).trim() };
 }
 
-async function pickTools(secrets: Ctx["secretsManager"]): Promise<Tool[]> {
+async function pickTools(secrets: Ctx["secretsManager"], presetIds?: string[]): Promise<Tool[]> {
   // The chosen secrets manager auto-installs; the other one is hidden from the prompt.
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
+  if (presetIds) return selectTools(tools, new Set(presetIds), secrets);
   const optional = tools.filter((t) => !t.required && !isSecretsTool(t.id));
   const v = await p.multiselect({
     message: "Optional tools to install:",
@@ -129,17 +136,28 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes("--dry-run") || argv.includes("-n")) setDryRun(true);
 
+  // --scenario <path>: load a JSON file that supplies every prompt answer.
+  // Used by the smoke-test harness (tests/smoke/) to drive the installer
+  // non-interactively against a clean Ubuntu container.
+  let scenario: Scenario | null = null;
+  const sIdx = argv.indexOf("--scenario");
+  if (sIdx !== -1) {
+    const path = argv[sIdx + 1];
+    if (!path) throw new Error("--scenario requires a path argument");
+    scenario = await loadScenario(path);
+  }
+
   p.intro(isDryRun() ? "👾📦 Devbox installer (dry-run)" : "👾📦 Devbox installer");
 
-  const repo = await pickRepo();
-  const git = await pickGitIdentity();
-  const gitMode = await pickGitMode();
+  const repo = await pickRepo(scenario?.repo);
+  const git = await pickGitIdentity(scenario?.gitIdentity);
+  const gitMode = await pickGitMode(scenario?.gitMode);
   const gitWritePolicy =
     gitMode === "write"
-      ? await pickGitWritePolicy()
+      ? await pickGitWritePolicy(scenario?.gitWritePolicy)
       : { pushMain: false, deleteBranches: false };
-  const secretsManager = await pickSecretsManager();
-  const selected = await pickTools(secretsManager);
+  const secretsManager = await pickSecretsManager(scenario?.secretsManager);
+  const selected = await pickTools(secretsManager, scenario?.selectedToolIds);
 
   const ctx: Ctx = {
     repo,
@@ -190,6 +208,8 @@ async function main(): Promise<void> {
       p.log.info("Skipping `claude login` — already authenticated.");
     } else if (isDryRun()) {
       p.log.info("[dry-run] would run: claude login");
+    } else if (scenario) {
+      p.log.info("Skipping `claude login` — scenario mode (smoke test).");
     } else {
       p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
       const code = await runInteractive("claude", ["login"]);

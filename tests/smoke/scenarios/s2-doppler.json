@@ -1,0 +1,9 @@
+{
+  "_comment": "Doppler + write mode + default optional tools. Specifically catches the doppler keyring/umask class.",
+  "repo": "https://github.com/octocat/hello",
+  "gitIdentity": { "name": "Smoke Test", "email": "smoke@example.com" },
+  "gitMode": "write",
+  "gitWritePolicy": { "pushMain": false, "deleteBranches": false },
+  "secretsManager": "doppler",
+  "selectedToolIds": ["agent-browser", "socket", "vite-plus", "claude", "skills"]
+}

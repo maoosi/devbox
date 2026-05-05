@@ -24,7 +24,7 @@ describe("apt keyring permissions", () => {
       if (!KEYRING_WRITE.test(src)) continue;
 
       const keyrings = new Set<string>();
-      for (const m of src.matchAll(KEYRING_PATH)) keyrings.add(m[1]);
+      for (const m of src.matchAll(KEYRING_PATH)) keyrings.add(m[1]!);
 
       for (const name of keyrings) {
         const escaped = name.replace(/[.\-]/g, "\\$&");

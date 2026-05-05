@@ -42,7 +42,12 @@ export async function run(
     child.on("error", () => res(1));
   });
   if (code !== 0 && !opts.allowFail) {
-    throw new Error(`${cmd} ${args.join(" ")} failed (${code})`);
+    // When `quiet: true` swallows stdio, the calling tool's spinner just
+    // stops with a generic "✗" — surface the captured stderr (last 800 chars
+    // is enough to see the real cause) so failures are diagnosable.
+    const tail = (stderr || stdout).trim().slice(-800);
+    const detail = tail ? `\n${tail}` : "";
+    throw new Error(`${cmd} ${args.join(" ")} failed (${code})${detail}`);
   }
   return { code, stdout, stderr };
 }

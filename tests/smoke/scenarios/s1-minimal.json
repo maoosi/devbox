@@ -1,6 +1,6 @@
 {
   "_comment": "Bare floor: no secrets, read-only git, only required tools. Catches generic apt/runtime install regressions.",
-  "repo": "https://github.com/octocat/hello",
+  "repo": "https://github.com/octocat/Hello-World",
   "gitIdentity": { "name": "Smoke Test", "email": "smoke@example.com" },
   "gitMode": "read-only",
   "gitWritePolicy": { "pushMain": false, "deleteBranches": false },

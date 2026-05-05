@@ -88,9 +88,42 @@ if has_in_array "claude" "$TOOLS_LINE"; then
   [ -f "$HOME/.claude/CLAUDE.md" ] && ok "~/.claude/CLAUDE.md exists" || fail "~/.claude/CLAUDE.md missing (claude selected)"
 fi
 
+# ── ~/.bunfig.toml (ignore-scripts is required tool) ──────────────────────
+BUNFIG="$HOME/.bunfig.toml"
+if [ -f "$BUNFIG" ] && grep -Fq "ignoreScripts = true" "$BUNFIG"; then
+  ok "~/.bunfig.toml has ignoreScripts = true"
+else
+  fail "~/.bunfig.toml missing or doesn't set ignoreScripts = true"
+fi
+
+# ── Skills shipped (claude implies skills runs by default) ────────────────
+if has_in_array "skills" "$TOOLS_LINE"; then
+  SKILL="$HOME/.claude/skills/code-review/SKILL.md"
+  [ -f "$SKILL" ] && ok "shipped skill code-review/SKILL.md exists" \
+    || fail "$SKILL missing (skills tool selected)"
+fi
+
+# ── apt-get update succeeds (proves keyring perms work end-to-end) ────────
+# Only run on fresh — rerun shouldn't repeat this network call. The keyring
+# mode check above is a proxy; this is the real outcome that matters.
+if [ "$PHASE" = "fresh" ]; then
+  if sudo apt-get update -qq >/dev/null 2>&1; then
+    ok "apt-get update succeeds (all keyrings readable by _apt)"
+  else
+    fail "apt-get update failed — likely a keyring or sources.list.d issue"
+  fi
+fi
+
 # ── ~/.bashrc devbox source line: present, exactly once ───────────────────
+# -F (fixed string) is required: the literal SRC_LINE contains "/*", which is a
+# valid BRE regex but doesn't match itself (`/` followed by 0+-/ quantifier,
+# then any char) — silently zero matches.
 SRC_LINE='for f in ~/.bashrc.d/*.sh; do'
-count=$(grep -c "$SRC_LINE" "$HOME/.bashrc" 2>/dev/null || echo 0)
+if [ -f "$HOME/.bashrc" ]; then
+  count=$(grep -Fc "$SRC_LINE" "$HOME/.bashrc")
+else
+  count=0
+fi
 case "$count" in
   1) ok "~/.bashrc devbox source line present once" ;;
   0) fail "~/.bashrc missing devbox source line" ;;
@@ -110,11 +143,42 @@ if [ "$PHASE" = "rerun" ]; then
         || fail "rerun did not reuse Infisical token (re-prompted instead)" ;;
   esac
 
+  # GH_TOKEN reuse — same readEnv() round-trip as the secrets managers.
+  if grep -q "Reusing existing GitHub token" /tmp/devbox-rerun.log; then
+    ok "rerun reused GitHub token"
+  else
+    fail "rerun did not reuse GitHub token (re-prompted instead)"
+  fi
+
+  # ~/.bashrc byte-identical across fresh→rerun. This is the direct check for
+  # the fnm/bun/pnpm-append-on-rerun risk: each runtime installer appends a
+  # PATH block on every run, and runtimes.ts guards on marker-dir existence
+  # to short-circuit. If any of those guards regresses, this check catches it.
+  if [ -f /tmp/devbox-bashrc.sha256 ] && sha256sum -c /tmp/devbox-bashrc.sha256 >/dev/null 2>&1; then
+    ok "~/.bashrc byte-identical after rerun"
+  else
+    fail "~/.bashrc changed across rerun (likely an installer appended duplicates)"
+  fi
+
+  # Skills idempotency: run-scenario.sh appended a marker line to the shipped
+  # skill between fresh and rerun. After rerun the marker must still be there.
+  SKILL="$HOME/.claude/skills/code-review/SKILL.md"
+  if [ -f "$SKILL" ]; then
+    if grep -q "devbox-smoke-marker" "$SKILL"; then
+      ok "skills tool preserved user edit on rerun"
+    else
+      fail "skills tool clobbered user edit on rerun"
+    fi
+  fi
+
+  # Tar diff over the rest of the managed tree. Mod-time-only diffs are
+  # expected (atime/mtime touch on read-only access); anything else is real.
   if [ -f /tmp/devbox-snapshot.tar ]; then
     cd /
-    if tar --diff -f /tmp/devbox-snapshot.tar 2>&1 \
-        | grep -vE 'Mod time differs|/tmp/devbox-(fresh|rerun)\.log' \
-        | grep -E '.+'; then
+    diff_out=$(tar --diff -f /tmp/devbox-snapshot.tar 2>&1 \
+      | grep -vE 'Mod time differs|/tmp/devbox-(fresh|rerun)\.log' || true)
+    if [ -n "$diff_out" ]; then
+      printf '%s\n' "$diff_out" >&2
       fail "rerun mutated tracked files (see diff above)"
     else
       ok "rerun left tracked files unchanged (idempotent)"

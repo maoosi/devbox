@@ -34,7 +34,10 @@ const tool: Tool = {
       );
     }
     if (!(await exists(path.join(home(), ".local", "share", "pnpm")))) {
-      await sh("curl -fsSL https://get.pnpm.io/install.sh | sh -", { quiet: true });
+      // Use `bash`, not `sh -`: on Ubuntu /bin/sh is dash, and pnpm's shell
+      // detection introspects the parent process — running under dash makes
+      // the post-install configuration step fail with ERR_PNPM_UNKNOWN_SHELL.
+      await sh("curl -fsSL https://get.pnpm.io/install.sh | bash", { quiet: true });
     }
 
     ctx.exports.push(
@@ -43,6 +46,22 @@ const tool: Tool = {
       `export PATH="$PNPM_HOME:$PATH"`,
       `[ -d "$HOME/.local/share/fnm" ] && export PATH="$HOME/.local/share/fnm:$PATH" && eval "$(fnm env --shell bash)"`,
     );
+
+    // Update the running process's PATH so later tools (ignore-scripts,
+    // socket, claude, agent-browser …) can spawn npm/node/pnpm directly.
+    // Without this, the just-installed binaries are only discoverable after a
+    // shell restart since ctx.exports is written to ~/.bashrc.d/devbox.sh
+    // after the install loop finishes.
+    const h = home();
+    const fnmShim = path.join(h, ".local", "share", "fnm", "aliases", "default", "bin");
+    process.env.PNPM_HOME = path.join(h, ".local", "share", "pnpm");
+    const extra = [
+      path.join(h, ".bun", "bin"),
+      process.env.PNPM_HOME,
+      path.join(h, ".local", "share", "fnm"),
+      fnmShim,
+    ];
+    process.env.PATH = `${extra.join(":")}:${process.env.PATH ?? ""}`;
   },
 };
 

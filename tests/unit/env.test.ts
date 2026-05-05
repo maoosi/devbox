@@ -1,5 +1,8 @@
-import { describe, test, expect } from "bun:test";
-import { parseRepoUrl, ghFineGrainedTokenUrl, ghClassicTokenUrl } from "../../src/env.ts";
+import { describe, test, expect, afterEach } from "bun:test";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import * as os from "node:os";
+import { parseRepoUrl, ghFineGrainedTokenUrl, ghClassicTokenUrl, writeEnv, readEnv } from "../../src/env.ts";
 
 describe("parseRepoUrl", () => {
   test("https URL", () => {
@@ -63,8 +66,11 @@ describe("parseRepoUrl", () => {
   });
 });
 
+// The fine-grained token URL deliberately omits target_name / contents /
+// pull_requests / metadata params — see env.ts for the comment block; GitHub
+// bug community/discussions/188111 makes pre-filling them unsafe.
 describe("ghFineGrainedTokenUrl", () => {
-  test("read access scopes contents+PRs to read", () => {
+  test("only pre-fills name and description; ignores ownerLogin and access", () => {
     const url = ghFineGrainedTokenUrl({
       name: "devbox-myrepo",
       description: "test",
@@ -72,24 +78,19 @@ describe("ghFineGrainedTokenUrl", () => {
       access: "read",
     });
     const params = new URL(url).searchParams;
-    expect(params.get("contents")).toBe("read");
-    expect(params.get("pull_requests")).toBe("read");
-    expect(params.get("target_name")).toBe("octocat");
     expect(params.get("name")).toBe("devbox-myrepo");
     expect(params.get("description")).toBe("test");
-    expect(params.get("metadata")).toBe("read");
+    expect(params.get("target_name")).toBeNull();
+    expect(params.get("contents")).toBeNull();
+    expect(params.get("pull_requests")).toBeNull();
+    expect(params.get("metadata")).toBeNull();
   });
 
-  test("write access scopes contents+PRs to write", () => {
-    const url = ghFineGrainedTokenUrl({
-      name: "devbox-myrepo",
-      description: "test",
-      ownerLogin: "octocat",
-      access: "write",
-    });
-    const params = new URL(url).searchParams;
-    expect(params.get("contents")).toBe("write");
-    expect(params.get("pull_requests")).toBe("write");
+  test("write access produces the same URL as read access", () => {
+    const opts = { name: "n", description: "d", ownerLogin: "o" } as const;
+    const read = ghFineGrainedTokenUrl({ ...opts, access: "read" });
+    const write = ghFineGrainedTokenUrl({ ...opts, access: "write" });
+    expect(read).toBe(write);
   });
 
   test("URL points at github.com fine-grained token form", () => {
@@ -120,5 +121,32 @@ describe("ghClassicTokenUrl", () => {
     const params = new URL(url).searchParams;
     expect(params.get("scopes")).toBe("repo,read:org");
     expect(params.get("description")).toBe("test");
+  });
+});
+
+// File mode + bashrc source-line-once are covered by the smoke harness end-to-end.
+// Quote-escaping is the one case worth exercising in-process: it's pure parser
+// behavior and would be tedious to assert from a shell.
+describe("writeEnv / readEnv round-trip", () => {
+  let tmpHome: string | undefined;
+  const origHome = process.env.HOME;
+  afterEach(async () => {
+    if (tmpHome) await fs.rm(tmpHome, { recursive: true, force: true });
+    process.env.HOME = origHome;
+    tmpHome = undefined;
+  });
+
+  test("escapes embedded double quotes; readEnv un-escapes them", async () => {
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "devbox-env-"));
+    process.env.HOME = tmpHome;
+
+    const original = { GH_TOKEN: "abc", QUOTED: 'has "quotes" inside' };
+    await writeEnv(original);
+
+    const body = await fs.readFile(path.join(tmpHome, ".config", "devbox", "env"), "utf8");
+    expect(body).toContain('GH_TOKEN="abc"');
+    expect(body).toContain('QUOTED="has \\"quotes\\" inside"');
+
+    expect(await readEnv()).toEqual(original);
   });
 });

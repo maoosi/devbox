@@ -9,6 +9,7 @@ import { cloneDir } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
 import { setDryRun, isDryRun } from "./dryrun.ts";
 import { loadScenario, type Scenario } from "./scenario.ts";
+import packageJson from "../package.json";
 
 async function pickRepo(preset?: Scenario["repo"]): Promise<Ctx["repo"]> {
   if (preset) return preset;
@@ -16,7 +17,11 @@ async function pickRepo(preset?: Scenario["repo"]): Promise<Ctx["repo"]> {
     message: "GitHub repo URL?",
     placeholder: "https://github.com/owner/repo",
     validate: (s) =>
-      !s ? "Required" : !parseRepoUrl(s) ? "Expected https://github.com/<owner>/<repo>" : undefined,
+      !s
+        ? "Required"
+        : !parseRepoUrl(s)
+        ? "Expected https://github.com/<owner>/<repo>"
+        : undefined,
   });
   if (p.isCancel(v)) process.exit(1);
   return { url: v as string, ...parseRepoUrl(v as string)! };
@@ -44,7 +49,9 @@ async function pickGitMode(preset?: GitMode): Promise<GitMode> {
   return v as GitMode;
 }
 
-async function pickGitWritePolicy(preset?: GitWritePolicy): Promise<GitWritePolicy> {
+async function pickGitWritePolicy(
+  preset?: GitWritePolicy
+): Promise<GitWritePolicy> {
   if (preset) return preset;
   const v = await p.multiselect({
     message: "Extra write permissions (default: off)",
@@ -69,7 +76,9 @@ async function pickGitWritePolicy(preset?: GitWritePolicy): Promise<GitWritePoli
   };
 }
 
-async function pickSecretsManager(preset?: Ctx["secretsManager"]): Promise<Ctx["secretsManager"]> {
+async function pickSecretsManager(
+  preset?: Ctx["secretsManager"]
+): Promise<Ctx["secretsManager"]> {
   if (preset) return preset;
   const v = await p.select({
     message: "Secrets manager?",
@@ -84,13 +93,28 @@ async function pickSecretsManager(preset?: Ctx["secretsManager"]): Promise<Ctx["
   return v as Ctx["secretsManager"];
 }
 
-async function pickGitIdentity(preset?: { name: string; email: string }): Promise<{ name: string; email: string }> {
+async function pickGitIdentity(preset?: {
+  name: string;
+  email: string;
+}): Promise<{ name: string; email: string }> {
   if (preset) return preset;
   // Use whatever git already has as defaults so power users don't retype.
   // `force: true` so the read happens even under dry-run (it's introspection,
   // not an action — and skipping it would mean dry-run never has defaults).
-  const existingName = (await run("git", ["config", "--global", "user.name"], { quiet: true, allowFail: true, force: true })).stdout.trim();
-  const existingEmail = (await run("git", ["config", "--global", "user.email"], { quiet: true, allowFail: true, force: true })).stdout.trim();
+  const existingName = (
+    await run("git", ["config", "--global", "user.name"], {
+      quiet: true,
+      allowFail: true,
+      force: true,
+    })
+  ).stdout.trim();
+  const existingEmail = (
+    await run("git", ["config", "--global", "user.email"], {
+      quiet: true,
+      allowFail: true,
+      force: true,
+    })
+  ).stdout.trim();
 
   // clack quirk: passing both placeholder + initialValue causes typed input
   // to append to the initial value. Pass exactly one.
@@ -108,21 +132,29 @@ async function pickGitIdentity(preset?: { name: string; email: string }): Promis
     ...(existingEmail
       ? { initialValue: existingEmail }
       : { placeholder: "you@example.com" }),
-    validate: (s) => (s && /.+@.+\..+/.test(s) ? undefined : "Expected an email address"),
+    validate: (s) =>
+      s && /.+@.+\..+/.test(s) ? undefined : "Expected an email address",
   });
   if (p.isCancel(email)) process.exit(1);
 
   return { name: (name as string).trim(), email: (email as string).trim() };
 }
 
-async function pickTools(secrets: Ctx["secretsManager"], presetIds?: string[]): Promise<Tool[]> {
+async function pickTools(
+  secrets: Ctx["secretsManager"],
+  presetIds?: string[]
+): Promise<Tool[]> {
   // The chosen secrets manager auto-installs; the other one is hidden from the prompt.
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
   if (presetIds) return selectTools(tools, new Set(presetIds), secrets);
   const optional = tools.filter((t) => !t.required && !isSecretsTool(t.id));
   const v = await p.multiselect({
     message: "Optional tools to install:",
-    options: optional.map((t) => ({ value: t.id, label: t.label, hint: t.hint })),
+    options: optional.map((t) => ({
+      value: t.id,
+      label: t.label,
+      hint: t.hint,
+    })),
     initialValues: optional.filter((t) => t.default).map((t) => t.id),
     required: false,
   });
@@ -147,7 +179,8 @@ async function main(): Promise<void> {
     scenario = await loadScenario(path);
   }
 
-  p.intro(isDryRun() ? "👾📦 Devbox installer (dry-run)" : "👾📦 Devbox installer");
+  const drySuffix = isDryRun() ? " (dry-run)" : "";
+  p.intro(`👾📦 Devbox installer ${packageJson.version}${drySuffix}`);
 
   const repo = await pickRepo(scenario?.repo);
   const git = await pickGitIdentity(scenario?.gitIdentity);
@@ -185,8 +218,12 @@ async function main(): Promise<void> {
   }
 
   // Apply git identity now that git is installed.
-  await run("git", ["config", "--global", "user.name", git.name], { quiet: true });
-  await run("git", ["config", "--global", "user.email", git.email], { quiet: true });
+  await run("git", ["config", "--global", "user.name", git.name], {
+    quiet: true,
+  });
+  await run("git", ["config", "--global", "user.email", git.email], {
+    quiet: true,
+  });
 
   await writeEnv(ctx.tokens);
   await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
@@ -211,7 +248,9 @@ async function main(): Promise<void> {
     } else if (scenario) {
       p.log.info("Skipping `claude login` — scenario mode (smoke test).");
     } else {
-      p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
+      p.log.info(
+        "Starting `claude login` — follow the OAuth flow in your browser."
+      );
       const code = await runInteractive("claude", ["login"]);
       if (code !== 0) {
         p.log.warn("`claude login` did not complete. Run it manually later.");
@@ -235,10 +274,12 @@ async function main(): Promise<void> {
       `# Plain SSH (any host):`,
       `ssh <host> -t "cd ${target} && exec bash -l"`,
     ].join("\n"),
-    "Reconnect later",
+    "Reconnect later"
   );
 
-  p.outro("All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases.");
+  p.outro(
+    "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."
+  );
 }
 
 main().catch((err) => {

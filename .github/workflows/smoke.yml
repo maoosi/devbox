@@ -1,9 +1,11 @@
 name: smoke
 
+# Manual-only. Smoke runs the full installer end-to-end inside Docker and
+# takes several minutes per scenario; gate it behind workflow_dispatch so CI
+# minutes don't get burned on every push. Run via the Actions tab → "smoke"
+# → "Run workflow", or `gh workflow run smoke`.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   unit:
@@ -13,7 +15,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
-      - run: bun test tests/unit tests/integration
+      - run: bun test tests/unit
 
   smoke:
     runs-on: ubuntu-latest

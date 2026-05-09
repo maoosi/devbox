@@ -63,10 +63,17 @@ ${name} is scoped to this project's dev environment via a read-only service toke
 `;
 }
 
-const DENIED_SECTION = `## Denied actions
+const DENIED_SECTION_BASE = `\`git push --force\`, \`git reset --hard\`, \`git clean -fd\`, \`git push --no-verify\`, and \`npm publish\` are denied by global devbox settings. If the user genuinely needs one of these, they'll run it themselves.`;
 
-\`git push --force\`, \`git reset --hard\`, \`git clean -fd\`, \`git push --no-verify\`, and \`npm publish\` are denied by global devbox settings. If the user genuinely needs one of these, they'll run it themselves.
-`;
+const DENIED_SECTION_NO_MAIN = `Direct pushes to the default branch and merges into the default branch (\`gh pr merge\`, \`git merge\` while on main) are also denied — land changes via PR review.`;
+
+function deniedSection(ctx: Ctx): string {
+  const blockMainMutations = ctx.gitMode === "write" && !ctx.gitWritePolicy.pushMain;
+  const body = blockMainMutations
+    ? `${DENIED_SECTION_BASE}\n\n${DENIED_SECTION_NO_MAIN}`
+    : DENIED_SECTION_BASE;
+  return `## Denied actions\n\n${body}\n`;
+}
 
 export function buildAgentsMd(ctx: Ctx): string {
   const has = (id: string) => ctx.selectedToolIds.has(id);
@@ -76,7 +83,7 @@ export function buildAgentsMd(ctx: Ctx): string {
   if (has("socket") || has("ignore-scripts")) sections.push(PACKAGE_INSTALLS_SECTION);
   const secrets = secretsSection(ctx.secretsManager);
   if (secrets) sections.push(secrets);
-  sections.push(DENIED_SECTION);
+  sections.push(deniedSection(ctx));
   return sections.join("\n");
 }
 

@@ -31,6 +31,31 @@ describe("buildAgentsMd", () => {
     expect(md).toContain("git push --no-verify");
   });
 
+  test("denied-actions documents merge-into-main block when write+pushMain=false", () => {
+    const md = buildAgentsMd(ctx({
+      gitMode: "write",
+      gitWritePolicy: { pushMain: false, deleteBranches: false },
+    }));
+    expect(md).toContain("merges into the default branch");
+    expect(md).toContain("gh pr merge");
+  });
+
+  test("denied-actions omits merge-into-main note when pushMain=true", () => {
+    const md = buildAgentsMd(ctx({
+      gitMode: "write",
+      gitWritePolicy: { pushMain: true, deleteBranches: false },
+    }));
+    expect(md).not.toContain("merges into the default branch");
+  });
+
+  test("denied-actions omits merge-into-main note in read-only mode", () => {
+    const md = buildAgentsMd(ctx({
+      gitMode: "read-only",
+      gitWritePolicy: { pushMain: false, deleteBranches: false },
+    }));
+    expect(md).not.toContain("merges into the default branch");
+  });
+
   test("github section appears iff mcp or github tool is installed", () => {
     expect(buildAgentsMd(ctx({}))).not.toContain("## GitHub");
     expect(buildAgentsMd(ctx({ selectedToolIds: new Set(["mcp"]) }))).toContain("## GitHub");

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { sh } from "../exec.ts";
 import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
-import type { Tool } from "./index.ts";
+import type { Tool, GitWritePolicy } from "./index.ts";
 
 function claudeDir(): string { return path.join(home(), ".claude"); }
 function settingsPath(): string { return path.join(claudeDir(), "settings.json"); }
@@ -45,12 +45,26 @@ const READ_ONLY_DENY = [
   "Bash(gh issue create:*)",
 ];
 
+// Write mode + pushMain=false: agent layer for the merge-into-main block.
+// `gh pr merge` runs server-side and bypasses the local pre-merge-commit hook,
+// so it has to be denied here. Local `git merge` is intentionally NOT blocked
+// — the agent legitimately runs `git merge main` on a feature branch; the
+// pre-merge-commit hook catches the on-main case.
+const WRITE_NO_MAIN_DENY = [
+  "Bash(gh pr merge:*)",
+];
+
 export function buildSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
+  policy: GitWritePolicy,
   homeDir: string = home(),
 ): Record<string, unknown> {
-  const deny = [...baseDeny(homeDir), ...(gitMode === "read-only" ? READ_ONLY_DENY : [])];
+  const deny = [
+    ...baseDeny(homeDir),
+    ...(gitMode === "read-only" ? READ_ONLY_DENY : []),
+    ...(gitMode === "write" && !policy.pushMain ? WRITE_NO_MAIN_DENY : []),
+  ];
   return {
     includeCoAuthoredBy: false,
     permissions: {
@@ -71,6 +85,7 @@ export function buildSettings(
 async function writeSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
+  policy: GitWritePolicy,
 ): Promise<void> {
   if (isDryRun()) {
     note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode}; skipped if present)`);
@@ -83,7 +98,7 @@ async function writeSettings(
     /* not present — write a fresh one */
   }
   await fs.mkdir(claudeDir(), { recursive: true });
-  const settings = buildSettings(mcpServers, gitMode);
+  const settings = buildSettings(mcpServers, gitMode, policy);
   await fs.writeFile(settingsPath(), JSON.stringify(settings, null, 2) + "\n");
 }
 
@@ -100,7 +115,7 @@ const tool: Tool = {
       "bun install -g @anthropic-ai/claude-code || npm install -g @anthropic-ai/claude-code",
       { quiet: true },
     );
-    await writeSettings(ctx.mcpServers, ctx.gitMode);
+    await writeSettings(ctx.mcpServers, ctx.gitMode, ctx.gitWritePolicy);
   },
 };
 

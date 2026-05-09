@@ -289,9 +289,9 @@ async function main(): Promise<void> {
       p.log.info(
         "Starting `claude login` — follow the OAuth flow in your browser."
       );
-      // Run from ~/repo so Claude Code's first-run trust prompt records the
+      // Run from the clone so Claude Code's first-run trust prompt records the
       // actual work directory as trusted (no nag on first `claude` in-repo).
-      const code = await runInteractive("claude", ["login"], { cwd: cloneDir() });
+      const code = await runInteractive("claude", ["login"], { cwd: cloneDir(repo.slug) });
       if (code !== 0) {
         p.log.warn("`claude login` did not complete. Run it manually later.");
       }
@@ -305,25 +305,27 @@ async function main(): Promise<void> {
       `# From your Mac (Orbstack):`,
       `ssh devbox-${repo.slug}@orb`,
       `# then once connected:`,
-      `cd ${cloneDirDisplay()}`,
+      `cd ${cloneDirDisplay(repo.slug)}`,
     ].join("\n"),
     "Reconnect later"
   );
 
-  // Claude Code Desktop's "SSH Hosts" UI takes the four fields below.
-  // Orbstack exposes each VM on 127.0.0.1:32222 with a generated key on the
-  // Mac host; the @orb shortcut above doesn't fit that form, so spell it out.
-  if (selected.some((t) => t.id === "claude")) {
-    p.note(
-      [
-        `Name:          devbox-${repo.slug}`,
-        `SSH Host:      devbox-${repo.slug}@127.0.0.1`,
-        `SSH Port:      32222`,
-        `Identity File: ~/.orbstack/ssh/id_ed25519`,
-      ].join("\n"),
-      "Connect from Claude Code Desktop"
-    );
-  }
+  // SSH host fields for any remote SSH client (Claude Desktop, VS Code Remote,
+  // Cursor, JetBrains Gateway, etc.). Orbstack exposes each VM on
+  // 127.0.0.1:32222 with a generated key on the Mac host; the @orb shortcut
+  // above doesn't fit that form, so spell it out. Always shown — even without
+  // an agent CLI installed, the user may still want to attach a remote IDE.
+  p.note(
+    [
+      `For Claude Desktop, VS Code Remote, Cursor, JetBrains Gateway, etc.`,
+      ``,
+      `Name:          devbox-${repo.slug}`,
+      `SSH Host:      devbox-${repo.slug}@127.0.0.1`,
+      `SSH Port:      32222`,
+      `Identity File: ~/.orbstack/ssh/id_ed25519`,
+    ].join("\n"),
+    "Connect from a remote SSH client"
+  );
 
   p.outro(
     "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."

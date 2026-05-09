@@ -5,11 +5,11 @@ import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
 import type { Tool, GitWritePolicy } from "./index.ts";
 
-// One devbox = one repo. The clone always lives at ~/repo so reconnect
-// commands and conventions docs are identical across every devbox you spin up.
-const REPO_DIRNAME = "repo";
-export function cloneDir(): string { return path.join(home(), REPO_DIRNAME); }
-export function cloneDirDisplay(): string { return `~/${REPO_DIRNAME}`; }
+// One devbox = one repo. The clone lives at ~/<slug> where <slug> is the repo
+// name from the GitHub URL — recognisable per-project (~/devbox, ~/Hello-World)
+// instead of a generic ~/repo across every box.
+export function cloneDir(slug: string): string { return path.join(home(), slug); }
+export function cloneDirDisplay(slug: string): string { return `~/${slug}`; }
 
 // Pre-push hook script. The default-branch name is resolved at run time so
 // "main" / "master" / "trunk" are all handled. Sentinel SHA = branch deletion.
@@ -38,6 +38,27 @@ exit 0
 `;
 }
 
+// Local-merge counterpart to prePushHook. Refuses any merge commit created
+// while HEAD is the default branch when pushMain=false. Catches
+// `git checkout main && git merge feature` (non-FF). FF merges create no
+// commit and don't fire this hook — those are still caught at push time by
+// prePushHook (which blocks every push to the default branch).
+export function preMergeCommitHook(policy: GitWritePolicy): string {
+  return `#!/bin/sh
+# Installed by devbox install. Reflects this devbox's git policy.
+# Bypassing requires \`--no-verify\`, which is denied at the agent layer.
+ALLOW_MAIN=${policy.pushMain ? 1 : 0}
+DEFAULT_BRANCH="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')"
+[ -z "$DEFAULT_BRANCH" ] && DEFAULT_BRANCH=main
+CURRENT_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null)"
+if [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ] && [ "$ALLOW_MAIN" = "0" ]; then
+  echo "blocked: merging into $DEFAULT_BRANCH is disabled by devbox policy" >&2
+  exit 1
+fi
+exit 0
+`;
+}
+
 // Hook is only meaningful in write mode AND only when at least one restriction
 // applies. Read-only mode relies on the PAT scope (server-side) — installing a
 // hook there would just inconvenience the human if they ever pushed manually.
@@ -55,12 +76,13 @@ const tool: Tool = {
   default: true,
   required: true,
   async run(ctx) {
-    const target = cloneDir();
-    const hookPath = path.join(target, ".git", "hooks", "pre-push");
+    const target = cloneDir(ctx.repo.slug);
+    const prePushPath = path.join(target, ".git", "hooks", "pre-push");
+    const preMergePath = path.join(target, ".git", "hooks", "pre-merge-commit");
     const installHook = shouldInstallHook(ctx.gitMode, ctx.gitWritePolicy);
 
-    // Skip the clone if ~/repo already exists. Re-runs with a different repo
-    // URL are not handled — the user can rm -rf ~/repo and re-run.
+    // Skip the clone if the target already exists. Re-runs with a different
+    // repo URL are not handled — the user can rm -rf the folder and re-run.
     let alreadyCloned = false;
     try {
       await fs.access(target);
@@ -85,7 +107,8 @@ const tool: Tool = {
       if (alreadyCloned) note("skip clone", `${target} already exists`);
       else note("clone", `${ctx.repo.url} → ${target}`);
       if (installHook) {
-        note("write", `${hookPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`);
+        note("write", `${prePushPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`);
+        note("write", `${preMergePath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain})`);
       }
       return;
     }
@@ -96,10 +119,11 @@ const tool: Tool = {
       });
     }
 
-    // Always (re)write the hook — policy may have changed across runs and the
-    // file is a managed artifact.
+    // Always (re)write the hooks — policy may have changed across runs and the
+    // files are managed artifacts.
     if (installHook) {
-      await fs.writeFile(hookPath, prePushHook(ctx.gitWritePolicy), { mode: 0o755 });
+      await fs.writeFile(prePushPath, prePushHook(ctx.gitWritePolicy), { mode: 0o755 });
+      await fs.writeFile(preMergePath, preMergeCommitHook(ctx.gitWritePolicy), { mode: 0o755 });
     }
   },
 };

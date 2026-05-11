@@ -89,7 +89,11 @@ Rules:
 
 Rewrite comments in the changed code to sound like a working developer wrote them. Direct, natural, slightly clipped. Not like an English teacher graded them.
 
-Real devs write `// stripe gives an opaque error here, raise our own` rather than `// The Stripe SDK throws upon receiving a missing customer, consequently we surface our own error message to the API consumer.` Both are accurate. Only one sounds like a person.
+**Preserve the original format.** Change the content, not the shape. A JSDoc comment stays JSDoc. A block comment (`/* ... */`) stays a block comment. A leading line comment stays leading. A trailing inline comment stays trailing. A multi-line comment can shrink to fewer lines or one line if it earns it, but do not convert between styles. Editing copy is in scope. Reformatting is not.
+
+**Casing.** Standalone comments use sentence case. First character uppercase, normal punctuation. This covers leading line comments (`// Foo bar`), JSDoc, and block comments. Trailing inline comments on the same line as code may be all lowercase, e.g. `const msg = 'Hello' // set default message`. Both casings are fine for trailing inline, pick whatever reads better, but do not force lowercase on standalone comments.
+
+Real devs write `// Stripe gives an opaque error here, raise our own` rather than `// The Stripe SDK throws upon receiving a missing customer, consequently we surface our own error message to the API consumer.` Both are accurate. Only one sounds like a person.
 
 Keep:
 
@@ -115,7 +119,33 @@ Good: `// Stripe gives an opaque error on missing customer, raise our own`
 Bad: `// Parse the request body and validate it against our schema`
 Good: (delete, the code says exactly this)
 
-Bad: `// Wraps Stripe's checkout.sessions.create. We accept \`any\` because Stripe adds new optional params across versions and we don't want this signature to break consumers every time we bump the stripe sdk.`Good:`// wraps checkout.sessions.create. \`any\` is intentional, the SDK churns optional params each release`
+Bad: `// Wraps Stripe's checkout.sessions.create. We accept \`any\` because Stripe adds new optional params across versions and we don't want this signature to break consumers every time we bump the stripe sdk.`Good:`// Wraps checkout.sessions.create. \`any\` is intentional, the SDK churns optional params each release`
+
+JSDoc stays JSDoc, content tightens:
+
+Before:
+
+```js
+/**
+ * Validates the incoming webhook payload by checking the signature header
+ * against the expected HMAC computed using our shared secret. Returns true
+ * if and only if the signatures match exactly.
+ */
+```
+
+After:
+
+```js
+/**
+ * Validates the webhook signature against our shared secret.
+ */
+```
+
+Trailing inline, lowercase is fine:
+
+```js
+const msg = 'Hello' // set default message
+```
 
 ---
 

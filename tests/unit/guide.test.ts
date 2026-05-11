@@ -61,6 +61,7 @@ describe("buildGuideMd", () => {
       gitMode: "write",
       gitWritePolicy: { pushMain: true, deleteBranches: false },
     }));
+    expect(writeMd).toContain("## Git permissions");
     expect(writeMd).toContain("Current mode: **write**");
     expect(writeMd).toContain("Push to default branch: allowed");
     expect(writeMd).toContain("Branch deletion: blocked");
@@ -68,6 +69,33 @@ describe("buildGuideMd", () => {
     const readMd = buildGuideMd(ctx({ gitMode: "read-only" }));
     expect(readMd).toContain("Current mode: **read-only**");
     expect(readMd).toContain("Agent cannot commit, push, or open PRs");
+  });
+
+  test("git permissions section folds in deny rules and hooks together", () => {
+    const md = buildGuideMd(ctx({}));
+    const gitIdx = md.indexOf("## Git permissions");
+    const denyHeading = md.indexOf("### Claude deny rules", gitIdx);
+    const hooksHeading = md.indexOf("### Local git hooks", gitIdx);
+    expect(gitIdx).toBeGreaterThan(-1);
+    expect(denyHeading).toBeGreaterThan(gitIdx);
+    expect(hooksHeading).toBeGreaterThan(gitIdx);
+    expect(md).toContain("git push --force");
+    expect(md).toContain("pre-push");
+    expect(md).toContain("pre-merge-commit");
+  });
+
+  test("Claude config section keeps non-git rules and points at git permissions for the rest", () => {
+    const md = buildGuideMd(ctx({}));
+    const claudeIdx = md.indexOf("## Edit Claude config");
+    const gitIdx = md.indexOf("## Git permissions");
+    expect(claudeIdx).toBeGreaterThan(-1);
+    expect(gitIdx).toBeGreaterThan(claudeIdx);
+    // Non-git rules belong here.
+    expect(md.slice(claudeIdx, gitIdx)).toContain("npm publish");
+    expect(md.slice(claudeIdx, gitIdx)).toContain(".env");
+    // Git rules belong in the git permissions section, not here.
+    expect(md.slice(claudeIdx, gitIdx)).not.toContain("git push --force");
+    expect(md.slice(claudeIdx, gitIdx)).not.toContain("gh pr merge");
   });
 
   test("suggested section includes reconnect command and file map", () => {

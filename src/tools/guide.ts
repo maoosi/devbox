@@ -31,13 +31,11 @@ const INSTALL_ONELINER = `curl -fsSL https://raw.githubusercontent.com/maoosi/de
 function rotateGithubBlock(): string {
   return `### GitHub token
 
-The token lives in \`~/.config/devbox/env\` as \`GH_TOKEN\` and is mirrored to
+Stored as \`GH_TOKEN\` in \`~/.config/devbox/env\` and mirrored to
 \`/etc/environment\` for non-interactive SSH sessions.
 
-To rotate:
-
-1. Open https://github.com/settings/personal-access-tokens and revoke the old
-   \`devbox-<slug>\` token.
+1. Revoke the old \`devbox-<slug>\` token at
+   https://github.com/settings/personal-access-tokens.
 2. Delete the \`GH_TOKEN="…"\` line from \`~/.config/devbox/env\`.
 3. Re-run the installer:
 
@@ -45,20 +43,19 @@ To rotate:
    ${INSTALL_ONELINER}
    \`\`\`
 
-   The installer detects the missing token and walks you through minting a new
-   one. All other answers are remembered.
+   With no \`GH_TOKEN\` line to reuse, the installer falls through to the same
+   paste-a-new-token prompt you saw on first install. Every other answer is
+   remembered.
 `;
 }
 
 function rotateDopplerBlock(): string {
   return `### Doppler service token
 
-The token lives in \`~/.config/devbox/env\` as \`DOPPLER_TOKEN\`.
+Stored as \`DOPPLER_TOKEN\` in \`~/.config/devbox/env\`.
 
-To rotate:
-
-1. Open https://dashboard.doppler.com → your project → branch config → Access
-   tab. Revoke the old \`devbox-<slug>\` service token.
+1. Revoke the old \`devbox-<slug>\` service token at
+   https://dashboard.doppler.com → your project → branch config → Access tab.
 2. Delete the \`DOPPLER_TOKEN="…"\` line from \`~/.config/devbox/env\`.
 3. Re-run the installer:
 
@@ -66,27 +63,30 @@ To rotate:
    ${INSTALL_ONELINER}
    \`\`\`
 
-   Mint a new read-only token in the dashboard and paste it when prompted.
+   With no \`DOPPLER_TOKEN\` line to reuse, the installer falls through to the
+   paste prompt. Mint a new read-only token in the dashboard and paste it.
 `;
 }
 
 function rotateInfisicalBlock(): string {
   return `### Infisical service token
 
-The token lives in \`~/.config/devbox/env\` as \`INFISICAL_TOKEN\`.
+Stored as \`INFISICAL_TOKEN\` in \`~/.config/devbox/env\`.
 
-To rotate:
-
-1. Open https://app.infisical.com → your project → Access Control → Service
-   Tokens. Revoke the old \`devbox-<slug>\` token.
+1. Revoke the old \`devbox-<slug>\` token at https://app.infisical.com →
+   your project → Access Control → Service Tokens.
 2. Delete the \`INFISICAL_TOKEN="…"\` line from \`~/.config/devbox/env\`.
+   Required even if you also revoked it. The installer does not validate
+   Infisical tokens against the API, so a revoked-but-present token will be
+   reused.
 3. Re-run the installer:
 
    \`\`\`
    ${INSTALL_ONELINER}
    \`\`\`
 
-   Mint a new Read service token and paste it when prompted.
+   With no \`INFISICAL_TOKEN\` line to reuse, the installer falls through to
+   the paste prompt. Mint a new Read service token and paste it.
 `;
 }
 
@@ -102,20 +102,16 @@ const CLAUDE_CONFIG_SECTION = `## Edit Claude config
 Settings live at \`~/.claude/settings.json\`. The installer writes a fresh file
 on first install and never overwrites it on re-run, so your edits stick.
 
-The denied list is the safety net for risky shell commands. By default it
-blocks:
+Non-git deny rules in the default config:
 
-- \`git push --force\`, \`git push -f\`, \`git push --no-verify\`
-- \`git reset --hard\`, \`git clean -fd\`
 - \`npm publish\`
-- Reads of \`.env\`, \`.env.*\`, and \`~/.config/devbox/env\`
+- Reads of \`.env\`, \`.env.*\`, and \`~/.config/devbox/env\` (token leakage guard)
 
-In read-only git mode, \`git push\`, \`git commit\`, \`gh pr create\`, \`gh pr edit\`,
-\`gh pr merge\`, and \`gh issue create\` are also blocked. In write mode without
-direct-push-to-main, \`gh pr merge\` is blocked (the local pre-merge-commit hook
-catches the local merge).
+Git-related deny rules are documented in **Git permissions** below — change
+those by switching git mode rather than editing them by hand, so the deny
+list and the git hooks stay in sync.
 
-Edit \`settings.json\` directly to add or remove rules. Restart Claude Code
+Edit \`settings.json\` directly to add other rules. Restart Claude Code
 sessions to pick up the change.
 `;
 
@@ -141,27 +137,55 @@ function gitPermissionsSection(ctx: Ctx): string {
     ? `Push to default branch: ${ctx.gitWritePolicy.pushMain ? "allowed" : "blocked"}. Branch deletion: ${ctx.gitWritePolicy.deleteBranches ? "allowed" : "blocked"}.`
     : `Agent cannot commit, push, or open PRs. The PAT is read-scoped at the GitHub side as well.`;
 
-  return `## Change git permissions (read vs. write)
+  return `## Git permissions
 
 Current mode: ${cur}.
 ${policy}
 
-Fastest path to change this is to re-run the installer:
+Two layers enforce this:
+
+1. **Claude deny rules** (\`~/.claude/settings.json\`) stop the agent from
+   running risky git commands.
+2. **Local git hooks** (\`~/${ctx.repo.slug}/.git/hooks/\`) stop the same
+   commands when run by hand or by another tool.
+
+### Claude deny rules (always on)
+
+- \`git push --force\`, \`git push -f\`, \`git push --no-verify\`
+- \`git reset --hard\`, \`git clean -fd\`
+
+### Claude deny rules in read-only mode
+
+- \`git push\`, \`git commit\`
+- \`gh pr create\`, \`gh pr edit\`, \`gh pr merge\`, \`gh issue create\`
+
+### Claude deny rules in write mode without direct-push-to-main
+
+- \`gh pr merge\` (server-side merge that bypasses the local hook)
+
+### Local git hooks
+
+- \`pre-push\` blocks pushes to the default branch and branch deletions when
+  policy disallows them.
+- \`pre-merge-commit\` blocks merges into the default branch when policy
+  disallows direct push to main.
+
+### Change the mode
+
+Re-run the installer:
 
 \`\`\`
 ${INSTALL_ONELINER}
 \`\`\`
 
 Pick the new mode at the "Should the agent be able to write to git" prompt.
-The installer rewrites:
+The installer rewrites all three layers in one pass: the GitHub PAT scope
+(mint a new one with the right access), \`~/.claude/settings.json\` deny rules,
+and the two hook files. Keeping them in sync by hand is fiddly, so prefer
+this path over manual edits.
 
-- the GitHub PAT scope (you will mint a new one with the right access),
-- \`~/.claude/settings.json\` deny rules,
-- \`~/<slug>/.git/hooks/pre-push\` and \`pre-merge-commit\`.
-
-Manual alternative: edit \`~/.claude/settings.json\` deny list and the hook
-files under \`~/<slug>/.git/hooks/\` directly. The hook scripts are short and
-self-explanatory.
+If you do edit by hand, both the Claude settings and the hook files are short
+and self-explanatory.
 `;
 }
 

@@ -1,9 +1,8 @@
-import * as p from "@clack/prompts";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { home } from "../env.ts";
 import { has, sh } from "../exec.ts";
-import type { Tool } from "./index.ts";
+import type { Tool, ToolStatus } from "./index.ts";
 
 // `agent-browser install` exits immediately on Linux ARM64 (Chrome for Testing
 // has no aarch64 builds — see vercel-labs/agent-browser cli/src/install.rs),
@@ -42,22 +41,26 @@ const tool: Tool = {
   label: "agent-browser (headless browser for agents)",
   default: true,
   required: false,
-  async run() {
-    if (!(await has("agent-browser"))) {
+  async run(): Promise<ToolStatus> {
+    const cliPresent = await has("agent-browser");
+    if (!cliPresent) {
       await sh("npm install -g agent-browser", { quiet: true });
     }
 
     // DEVBOX_SKIP_BROWSER_DEPS lets smoke tests skip the ~150MB Chromium
     // download, exercising the CLI install without paying the download cost.
     if (process.env.DEVBOX_SKIP_BROWSER_DEPS === "1") {
-      p.log.info("Skipping browser-binary install (DEVBOX_SKIP_BROWSER_DEPS).");
-      return;
+      const note = cliPresent
+        ? "CLI reused; Chromium download skipped (DEVBOX_SKIP_BROWSER_DEPS)"
+        : "CLI installed; Chromium download skipped (DEVBOX_SKIP_BROWSER_DEPS)";
+      return cliPresent ? { kind: "reused", note } : { kind: "installed", note };
     }
 
     if (isLinuxArm64) {
       if (await chromiumAlreadyInstalled()) {
-        p.log.info("Skipping Playwright Chromium — already installed.");
-        return;
+        return cliPresent
+          ? { kind: "reused", note: "CLI + Chromium already installed" }
+          : { kind: "mixed", note: "CLI installed; Chromium reused" };
       }
       // Install Playwright globally and use it to provision Chromium. Playwright
       // ships official Linux ARM64 Chromium builds; agent-browser auto-detects
@@ -71,10 +74,15 @@ const tool: Tool = {
         { quiet: true },
       );
       await sh("npx --yes playwright install chromium", { quiet: true });
-      return;
+      return cliPresent
+        ? { kind: "mixed", note: "CLI reused; Chromium installed" }
+        : { kind: "installed", note: "CLI + Chromium" };
     }
 
     await sh("agent-browser install --with-deps", { quiet: true });
+    return cliPresent
+      ? { kind: "mixed", note: "CLI reused; ran agent-browser install --with-deps" }
+      : { kind: "installed" };
   },
 };
 

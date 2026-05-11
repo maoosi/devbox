@@ -124,4 +124,20 @@ describe("buildSettings", () => {
       expect(rule).not.toMatch(/^(Read|Glob|Grep)\(\*\*\)$/);
     }
   });
+
+  // The drift-warning UX in claude.ts depends on these byte-equal differences
+  // showing up when the user switches git mode on a re-run. If buildSettings
+  // ever produced equivalent JSON across different modes, the warning would
+  // silently miss the very case it exists to catch.
+  test("drift-detection: serialized output differs between git modes", () => {
+    const a = JSON.stringify(buildSettings({}, "write", STRICT, TEST_HOME));
+    const b = JSON.stringify(buildSettings({}, "read-only", STRICT, TEST_HOME));
+    expect(a).not.toBe(b);
+  });
+
+  test("drift-detection: serialized output differs between write policies", () => {
+    const permissive = JSON.stringify(buildSettings({}, "write", PERMISSIVE, TEST_HOME));
+    const strict = JSON.stringify(buildSettings({}, "write", STRICT, TEST_HOME));
+    expect(permissive).not.toBe(strict);
+  });
 });

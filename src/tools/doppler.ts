@@ -1,14 +1,16 @@
 import * as p from "@clack/prompts";
 import { run, sh } from "../exec.ts";
 import { readEnv } from "../env.ts";
-import type { Tool } from "./index.ts";
+import type { Tool, ToolStatus } from "./index.ts";
+
+const REUSE_NOTE = "no prompt, stored token still valid. To rotate see ~/DEVBOX.md.";
 
 const tool: Tool = {
   id: "doppler",
   label: "Doppler (one project, read-only)",
   default: true,
   required: false,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     // Install.sh sets `umask 077`, which sudo inherits. Without explicit chmod,
     // the keyring lands as root:root mode 0600 → apt's `_apt` user can't read
     // it → GPG verification fails → `apt-get update` exits 100.
@@ -29,13 +31,11 @@ const tool: Tool = {
     if (process.env.DEVBOX_SKIP_TOKENS === "1") {
       const reused = (await readEnv()).DOPPLER_TOKEN;
       if (reused) {
-        p.log.info("Reusing existing Doppler token from ~/.config/devbox/env.");
         ctx.tokens.DOPPLER_TOKEN = reused;
-      } else {
-        p.log.info("Skipping Doppler token (DEVBOX_SKIP_TOKENS).");
-        ctx.tokens.DOPPLER_TOKEN = "smoke-placeholder";
+        return { kind: "reused", note: REUSE_NOTE };
       }
-      return;
+      ctx.tokens.DOPPLER_TOKEN = "smoke-placeholder";
+      return { kind: "installed", note: "smoke-test placeholder token" };
     }
 
     // Re-run path: reuse a previously-stored DOPPLER_TOKEN if it still works.
@@ -47,9 +47,8 @@ const tool: Tool = {
         env: { DOPPLER_TOKEN: stored },
       });
       if (r.code === 0) {
-        p.log.info("Reusing existing Doppler token from ~/.config/devbox/env.");
         ctx.tokens.DOPPLER_TOKEN = stored;
-        return;
+        return { kind: "reused", note: REUSE_NOTE };
       }
     }
 
@@ -85,6 +84,7 @@ const tool: Tool = {
     if (r.code !== 0) throw new Error("Doppler token didn't validate (doppler me).");
 
     ctx.tokens.DOPPLER_TOKEN = token;
+    return { kind: "installed", note: "new token minted and stored" };
   },
 };
 

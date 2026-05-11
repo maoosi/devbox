@@ -112,4 +112,32 @@ describe("buildGuideMd", () => {
     expect(md).not.toContain("--dry-run");
     expect(md).not.toContain("dry-run");
   });
+
+  // The drift-warning UX in guide.ts depends on these byte-equal differences
+  // appearing when the user switches git mode or secrets manager. If
+  // buildGuideMd produced identical output across different ctx, the drift
+  // warning would never fire.
+  test("drift-detection: output differs when git mode changes", () => {
+    const a = buildGuideMd(ctx({ gitMode: "write" }));
+    const b = buildGuideMd(ctx({ gitMode: "read-only" }));
+    expect(a).not.toBe(b);
+  });
+
+  test("drift-detection: output differs when secrets manager changes", () => {
+    const a = buildGuideMd(ctx({ secretsManager: "doppler" }));
+    const b = buildGuideMd(ctx({ secretsManager: "infisical" }));
+    expect(a).not.toBe(b);
+  });
+
+  // Documents the corrected re-run behavior: settings.json is no longer
+  // promised as auto-rewritten. If someone reverts the doc fix, this test
+  // catches it.
+  test("git permissions section no longer promises settings.json gets auto-rewritten", () => {
+    const md = buildGuideMd(ctx({}));
+    const gitIdx = md.indexOf("## Git permissions");
+    const otherIdx = md.indexOf("## Other handy things");
+    const section = md.slice(gitIdx, otherIdx);
+    expect(section).not.toMatch(/rewrites all three layers/);
+    expect(section).toContain("does **not** rewrite `~/.claude/settings.json`");
+  });
 });

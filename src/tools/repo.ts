@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { run } from "../exec.ts";
 import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
-import type { Tool, GitWritePolicy } from "./index.ts";
+import type { Tool, ToolStatus, GitWritePolicy } from "./index.ts";
 
 // One devbox = one repo. The clone lives at ~/<slug> where <slug> is the repo
 // name from the GitHub URL — recognisable per-project (~/devbox, ~/Hello-World)
@@ -75,7 +75,7 @@ const tool: Tool = {
   label: "Clone repo",
   default: true,
   required: true,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     const target = cloneDir(ctx.repo.slug);
     const prePushPath = path.join(target, ".git", "hooks", "pre-push");
     const preMergePath = path.join(target, ".git", "hooks", "pre-merge-commit");
@@ -110,7 +110,9 @@ const tool: Tool = {
         note("write", `${prePushPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`);
         note("write", `${preMergePath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain})`);
       }
-      return;
+      return alreadyCloned
+        ? { kind: "mixed", note: "clone reused; hooks rewritten" }
+        : { kind: "installed", note: installHook ? "cloned + hooks written" : "cloned" };
     }
     if (!alreadyCloned) {
       await fs.mkdir(home(), { recursive: true });
@@ -125,6 +127,13 @@ const tool: Tool = {
       await fs.writeFile(prePushPath, prePushHook(ctx.gitWritePolicy), { mode: 0o755 });
       await fs.writeFile(preMergePath, preMergeCommitHook(ctx.gitWritePolicy), { mode: 0o755 });
     }
+
+    if (alreadyCloned) {
+      return installHook
+        ? { kind: "mixed", note: "clone reused; hooks rewritten" }
+        : { kind: "reused", note: "clone already present" };
+    }
+    return { kind: "installed", note: installHook ? "cloned + hooks written" : "cloned" };
   },
 };
 

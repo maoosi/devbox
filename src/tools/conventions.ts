@@ -2,7 +2,8 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
-import type { Tool, Ctx } from "./index.ts";
+import { detectDrift, warnDrift } from "../managed-file.ts";
+import type { Tool, ToolStatus, Ctx } from "./index.ts";
 
 async function fileExists(p: string): Promise<boolean> {
   try {
@@ -158,7 +159,7 @@ const tool: Tool = {
   label: "Agent conventions (~/AGENTS.md)",
   default: true,
   required: true,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     const agentsPath = path.join(home(), "AGENTS.md");
     const claudeMdPath = path.join(home(), ".claude", "CLAUDE.md");
     const installClaudeShim = ctx.selectedToolIds.has("claude");
@@ -166,20 +167,41 @@ const tool: Tool = {
     if (isDryRun()) {
       note("write", `${agentsPath} (sections gated by installed tools; skipped if present)`);
       if (installClaudeShim) note("write", `${claudeMdPath} (imports ~/AGENTS.md; skipped if present)`);
-      return;
+      return { kind: "installed" };
     }
 
-    // Skip if already present so user edits aren't clobbered on re-run. The
-    // trade-off: changing tool selection on a re-run won't refresh the doc —
-    // delete the file to regenerate.
-    if (!(await fileExists(agentsPath))) {
-      await fs.writeFile(agentsPath, buildAgentsMd(ctx));
+    // Skip if already present so user edits aren't clobbered on re-run.
+    // Drift check: if the on-disk content differs from what we would write
+    // today (e.g. user changed tool selection on re-run), warn loudly so the
+    // user knows the doc is stale.
+    const agentsTarget = buildAgentsMd(ctx);
+    let agentsKind: "installed" | "reused";
+    if (await fileExists(agentsPath)) {
+      const { stale } = await detectDrift(agentsPath, agentsTarget);
+      if (stale) warnDrift(agentsPath, "Other handy things → Edit AGENTS.md or the 12 default rules");
+      agentsKind = "reused";
+    } else {
+      await fs.writeFile(agentsPath, agentsTarget);
+      agentsKind = "installed";
     }
 
-    if (installClaudeShim && !(await fileExists(claudeMdPath))) {
-      await fs.mkdir(path.dirname(claudeMdPath), { recursive: true });
-      await fs.writeFile(claudeMdPath, CLAUDE_IMPORT_BODY);
+    let claudeKind: "installed" | "reused" | "skipped" = "skipped";
+    if (installClaudeShim) {
+      if (await fileExists(claudeMdPath)) {
+        claudeKind = "reused";
+      } else {
+        await fs.mkdir(path.dirname(claudeMdPath), { recursive: true });
+        await fs.writeFile(claudeMdPath, CLAUDE_IMPORT_BODY);
+        claudeKind = "installed";
+      }
     }
+
+    // The shim is small and rarely the headline, so the status reflects
+    // AGENTS.md primarily. If the shim landed fresh while AGENTS.md was
+    // reused, surface that as mixed so the user sees the shim was created.
+    if (agentsKind === "installed") return { kind: "installed" };
+    if (claudeKind === "installed") return { kind: "mixed", note: "AGENTS.md reused; CLAUDE.md shim installed" };
+    return { kind: "reused", note: "AGENTS.md already present" };
   },
 };
 

@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { sh } from "../exec.ts";
 import { home } from "../env.ts";
-import type { Tool } from "./index.ts";
+import type { Tool, ToolStatus } from "./index.ts";
 
 // Probe by install-marker directory rather than `command -v`. Each upstream
 // installer (bun, fnm, pnpm) appends a PATH/init block to ~/.bashrc on every
@@ -22,23 +22,34 @@ const tool: Tool = {
   label: "Node + pnpm + Bun",
   default: true,
   required: true,
-  async run(ctx) {
-    if (!(await exists(path.join(home(), ".bun")))) {
+  async run(ctx): Promise<ToolStatus> {
+    // Track which runtimes were actually installed this run vs. already
+    // present, so we can surface the result on the spinner and in the summary.
+    const fresh: string[] = [];
+    const reused: string[] = [];
+
+    const probeAndInstall = async (name: string, marker: string, install: () => Promise<void>) => {
+      if (await exists(marker)) { reused.push(name); return; }
+      await install();
+      fresh.push(name);
+    };
+
+    await probeAndInstall("bun", path.join(home(), ".bun"), async () => {
       await sh("curl -fsSL https://bun.sh/install | bash", { quiet: true });
-    }
-    if (!(await exists(path.join(home(), ".local", "share", "fnm")))) {
+    });
+    await probeAndInstall("fnm", path.join(home(), ".local", "share", "fnm"), async () => {
       await sh("curl -fsSL https://fnm.vercel.app/install | bash", { quiet: true });
       await sh(
         `eval "$($HOME/.local/share/fnm/fnm env --shell bash)" && $HOME/.local/share/fnm/fnm install --lts && $HOME/.local/share/fnm/fnm default lts-latest`,
         { quiet: true },
       );
-    }
-    if (!(await exists(path.join(home(), ".local", "share", "pnpm")))) {
+    });
+    await probeAndInstall("pnpm", path.join(home(), ".local", "share", "pnpm"), async () => {
       // Use `bash`, not `sh -`: on Ubuntu /bin/sh is dash, and pnpm's shell
       // detection introspects the parent process — running under dash makes
       // the post-install configuration step fail with ERR_PNPM_UNKNOWN_SHELL.
       await sh("curl -fsSL https://get.pnpm.io/install.sh | bash", { quiet: true });
-    }
+    });
 
     ctx.exports.push(
       `export PATH="$HOME/.bun/bin:$PATH"`,
@@ -62,6 +73,10 @@ const tool: Tool = {
       fnmShim,
     ];
     process.env.PATH = `${extra.join(":")}:${process.env.PATH ?? ""}`;
+
+    if (fresh.length === 0) return { kind: "reused", note: "bun + fnm + pnpm already installed" };
+    if (reused.length === 0) return { kind: "installed", note: fresh.join(" + ") };
+    return { kind: "mixed", note: `installed ${fresh.join(", ")}; reused ${reused.join(", ")}` };
   },
 };
 

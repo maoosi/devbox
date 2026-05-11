@@ -1,7 +1,12 @@
 import * as p from "@clack/prompts";
 import { run, sh } from "../exec.ts";
 import { ghClassicTokenUrl, ghFineGrainedTokenUrl, readEnv } from "../env.ts";
-import type { Tool, Ctx } from "./index.ts";
+import type { Tool, ToolStatus, Ctx } from "./index.ts";
+
+// Shared note: shown on the spinner when a stored token was reused with no
+// prompt. Always points at ~/DEVBOX.md so the user knows where the rotation
+// instructions live.
+const REUSE_NOTE = "no prompt, stored token still valid. To rotate see ~/DEVBOX.md.";
 
 async function pasteToken(label: string): Promise<string> {
   const v = await p.password({
@@ -80,7 +85,7 @@ const tool: Tool = {
   label: "GitHub CLI + scoped token",
   default: true,
   required: true,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     // Install.sh sets `umask 077`, which sudo inherits. Without explicit chmod,
     // the keyring lands as root:root mode 0600 → apt's `_apt` user can't read
     // it → GPG verification fails → `apt-get update` exits 100.
@@ -98,13 +103,11 @@ const tool: Tool = {
     if (process.env.DEVBOX_SKIP_TOKENS === "1") {
       const reused = (await readEnv()).GH_TOKEN;
       if (reused) {
-        p.log.info("Reusing existing GitHub token from ~/.config/devbox/env.");
         ctx.tokens.GH_TOKEN = reused;
-      } else {
-        p.log.info("Skipping GitHub token (DEVBOX_SKIP_TOKENS).");
-        ctx.tokens.GH_TOKEN = "smoke-placeholder";
+        return { kind: "reused", note: REUSE_NOTE };
       }
-      return;
+      ctx.tokens.GH_TOKEN = "smoke-placeholder";
+      return { kind: "installed", note: "smoke-test placeholder token" };
     }
 
     // Re-run path: reuse a previously-stored GH_TOKEN if it still validates
@@ -118,9 +121,8 @@ const tool: Tool = {
         env: { GH_TOKEN: stored },
       });
       if (r.code === 0) {
-        p.log.info("Reusing existing GitHub token from ~/.config/devbox/env.");
         ctx.tokens.GH_TOKEN = stored;
-        return;
+        return { kind: "reused", note: REUSE_NOTE };
       }
     }
 
@@ -134,6 +136,7 @@ const tool: Tool = {
       env: { GH_TOKEN: token },
     });
     if (r.code !== 0) throw new Error(`Token cannot access ${ctx.repo.owner}/${ctx.repo.name}.`);
+    return { kind: "installed", note: "new token minted and stored" };
   },
 };
 

@@ -116,4 +116,26 @@ describe("buildAgentsMd", () => {
     expect(md).not.toContain("Doppler");
     expect(md).not.toContain("Infisical");
   });
+
+  // The drift-warning UX in conventions.ts depends on these byte-equal
+  // differences appearing when the user changes tool selection or secrets
+  // manager on a re-run. If buildAgentsMd produced identical output across
+  // different ctx, the drift warning would never fire.
+  test("drift-detection: output differs when tool selection changes", () => {
+    const a = buildAgentsMd(ctx({}));
+    const b = buildAgentsMd(ctx({ selectedToolIds: new Set(["agent-browser"]) }));
+    expect(a).not.toBe(b);
+  });
+
+  test("drift-detection: output differs when secrets manager changes", () => {
+    const a = buildAgentsMd(ctx({ secretsManager: "doppler" }));
+    const b = buildAgentsMd(ctx({ secretsManager: "infisical" }));
+    expect(a).not.toBe(b);
+  });
+
+  test("drift-detection: output differs when git policy changes", () => {
+    const a = buildAgentsMd(ctx({ gitMode: "write", gitWritePolicy: { pushMain: false, deleteBranches: false } }));
+    const b = buildAgentsMd(ctx({ gitMode: "write", gitWritePolicy: { pushMain: true, deleteBranches: false } }));
+    expect(a).not.toBe(b);
+  });
 });

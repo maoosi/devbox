@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as p from "@clack/prompts";
 import { tools, selectTools } from "./tools/index.ts";
-import type { Ctx, GitMode, GitWritePolicy, Tool } from "./tools/index.ts";
+import type { Ctx, GitMode, GitWritePolicy, Tool, ToolStatus } from "./tools/index.ts";
 import { home, parseRepoUrl, writeEnv, writeShellInit, writeSystemEnv } from "./env.ts";
 import { cloneDir, cloneDirDisplay } from "./tools/repo.ts";
 import { run, runInteractive } from "./exec.ts";
@@ -211,19 +211,29 @@ async function main(): Promise<void> {
   // optional tool (e.g. agent-browser ARM64) takes the whole flow down and
   // tokens never get written.
   type ToolResult =
-    | { id: string; label: string; status: "ok" }
+    | { id: string; label: string; status: "ok"; toolStatus: ToolStatus }
     | { id: string; label: string; status: "failed"; error: string };
   const results: ToolResult[] = [];
   let aborted: { tool: Tool; error: unknown } | null = null;
+
+  // Spinner stamp per status. ✓ for new work, ↻ for a no-op reuse so the
+  // user can see at a glance which tools actually ran on a re-run.
+  const stamp = (s: ToolStatus): string => {
+    const symbol = s.kind === "installed" ? "✓"
+                 : s.kind === "reused"    ? "↻ reused"
+                                          : "✓ partial reuse";
+    return s.note ? `${symbol} — ${s.note}` : symbol;
+  };
 
   try {
     for (const tool of selected) {
       const s = p.spinner();
       s.start(tool.label);
       try {
-        await tool.run(ctx);
-        s.stop(`${tool.label} ✓`);
-        results.push({ id: tool.id, label: tool.label, status: "ok" });
+        const ret = await tool.run(ctx);
+        const toolStatus: ToolStatus = ret ?? { kind: "installed" };
+        s.stop(`${tool.label} ${stamp(toolStatus)}`);
+        results.push({ id: tool.id, label: tool.label, status: "ok", toolStatus });
       } catch (err) {
         s.stop(`${tool.label} ✗`);
         const msg = err instanceof Error ? err.message : String(err);
@@ -259,11 +269,19 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Three-bucket end-of-run summary: Installed / Reused / Failed. Lets the
+  // user tell at a glance whether a re-run actually changed anything (all
+  // Reused = effective no-op) or which tools touched the system this run.
+  const ok = results.filter((r): r is Extract<ToolResult, { status: "ok" }> => r.status === "ok");
   const failed = results.filter((r): r is Extract<ToolResult, { status: "failed" }> => r.status === "failed");
-  const okIds = results.filter((r) => r.status === "ok").map((r) => r.id).join(", ");
+  const installedIds = ok.filter((r) => r.toolStatus.kind === "installed").map((r) => r.id);
+  const reusedIds = ok.filter((r) => r.toolStatus.kind === "reused").map((r) => r.id);
+  const mixedIds = ok.filter((r) => r.toolStatus.kind === "mixed").map((r) => r.id);
   const summaryLines: string[] = [];
-  if (okIds) summaryLines.push(`✓ ${okIds}`);
-  for (const f of failed) summaryLines.push(`⚠ ${f.id} — ${f.error.split("\n")[0]}`);
+  if (installedIds.length) summaryLines.push(`✓ installed: ${installedIds.join(", ")}`);
+  if (mixedIds.length) summaryLines.push(`✓ partial reuse: ${mixedIds.join(", ")}`);
+  if (reusedIds.length) summaryLines.push(`↻ reused (no-op): ${reusedIds.join(", ")}`);
+  for (const f of failed) summaryLines.push(`⚠ failed: ${f.id} — ${f.error.split("\n")[0]}`);
   if (summaryLines.length > 0) p.note(summaryLines.join("\n"), "Tools");
 
   // Final manual step: claude login (Anthropic OAuth — no API alternative).

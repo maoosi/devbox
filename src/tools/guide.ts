@@ -2,7 +2,8 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
-import type { Tool, Ctx } from "./index.ts";
+import { detectDrift, warnDrift } from "../managed-file.ts";
+import type { Tool, ToolStatus, Ctx } from "./index.ts";
 
 async function fileExists(p: string): Promise<boolean> {
   try {
@@ -179,10 +180,18 @@ ${INSTALL_ONELINER}
 \`\`\`
 
 Pick the new mode at the "Should the agent be able to write to git" prompt.
-The installer rewrites all three layers in one pass: the GitHub PAT scope
-(mint a new one with the right access), \`~/.claude/settings.json\` deny rules,
-and the two hook files. Keeping them in sync by hand is fiddly, so prefer
-this path over manual edits.
+The installer:
+
+- re-prompts for a GitHub PAT with the new scope (revoke the old one in the
+  GitHub UI first, then delete the \`GH_TOKEN="…"\` line from
+  \`~/.config/devbox/env\` so the installer falls through to the prompt),
+- rewrites the two hook files at \`~/${ctx.repo.slug}/.git/hooks/\`.
+
+It does **not** rewrite \`~/.claude/settings.json\` if the file is already
+there (your hand-edits stay safe). To pick up the new mode's deny rules,
+delete \`~/.claude/settings.json\` and re-run, or edit the deny list by hand
+to match the lists in this section. The installer surfaces a drift warning
+when the on-disk settings no longer match the chosen mode.
 
 If you do edit by hand, both the Claude settings and the hook files are short
 and self-explanatory.
@@ -209,7 +218,12 @@ ${INSTALL_ONELINER}
 
 Re-runs are safe. The installer reuses validated tokens, skips already-cloned
 repos, and never clobbers \`~/AGENTS.md\`, \`~/DEVBOX.md\`, \`~/.claude/settings.json\`,
-or any installed skill.
+or any installed skill. The end-of-run summary groups tools into **installed**
+(work happened) and **reused** (existing state preserved, no-op) so you can
+see what your re-run actually changed. If a managed file on disk no longer
+matches what the current install would write (e.g. you switched git mode but
+\`settings.json\` is still the old mode), the installer prints a drift
+warning pointing back here.
 
 ### Where things live
 
@@ -245,17 +259,24 @@ const tool: Tool = {
   label: "Devbox guide (~/DEVBOX.md)",
   default: true,
   required: true,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     const guidePath = path.join(home(), "DEVBOX.md");
 
     if (isDryRun()) {
       note("write", `${guidePath} (sections gated by installed tools; skipped if present)`);
-      return;
+      return { kind: "installed" };
     }
 
-    if (!(await fileExists(guidePath))) {
-      await fs.writeFile(guidePath, buildGuideMd(ctx));
+    const target = buildGuideMd(ctx);
+    if (await fileExists(guidePath)) {
+      // Drift check: if the user changed git mode or secrets manager on
+      // re-run, the guide on disk no longer matches reality. Warn loudly.
+      const { stale } = await detectDrift(guidePath, target);
+      if (stale) warnDrift(guidePath);
+      return { kind: "reused", note: "~/DEVBOX.md already present" };
     }
+    await fs.writeFile(guidePath, target);
+    return { kind: "installed" };
   },
 };
 

@@ -21,13 +21,23 @@ export type Ctx = {
   selectedToolIds: Set<string>;
 };
 
+// What a tool did on this run. The cli loop uses this to stamp the spinner
+// (✓ / ↻) and group the end-of-run summary into Installed / Reused buckets,
+// so a re-run is visibly different from a first install.
+export type ToolStatus =
+  | { kind: "installed"; note?: string }   // work happened
+  | { kind: "reused"; note?: string }      // existing state preserved, no-op
+  | { kind: "mixed"; note?: string };      // some sub-actions installed, some reused
+
 export type Tool = {
   id: string;
   label: string;
   hint?: string;
   default: boolean;
   required: boolean;
-  run: (ctx: Ctx) => Promise<void>;
+  // Returning void is treated as { kind: "installed" } — for tools whose work
+  // is naturally idempotent and where every run is "did the work."
+  run: (ctx: Ctx) => Promise<ToolStatus | void>;
 };
 
 import system from "./system.ts";

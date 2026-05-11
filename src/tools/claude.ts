@@ -3,7 +3,8 @@ import * as path from "node:path";
 import { sh } from "../exec.ts";
 import { home } from "../env.ts";
 import { isDryRun, note } from "../dryrun.ts";
-import type { Tool, GitWritePolicy } from "./index.ts";
+import { detectDrift, warnDrift } from "../managed-file.ts";
+import type { Tool, ToolStatus, GitWritePolicy } from "./index.ts";
 
 function claudeDir(): string { return path.join(home(), ".claude"); }
 function settingsPath(): string { return path.join(claudeDir(), "settings.json"); }
@@ -80,26 +81,41 @@ export function buildSettings(
   };
 }
 
-// Writes a fresh ~/.claude/settings.json. Fresh-VM only — never merges, and
-// never clobbers an existing file (re-runs leave the user's edits intact).
+// Render the JSON we would write today. Used both at write time and when
+// detecting drift on a re-run.
+function renderSettings(
+  mcpServers: Record<string, McpServer>,
+  gitMode: "read-only" | "write",
+  policy: GitWritePolicy,
+): string {
+  return JSON.stringify(buildSettings(mcpServers, gitMode, policy), null, 2) + "\n";
+}
+
+// Writes ~/.claude/settings.json on first install. Re-runs leave the file
+// alone (user edits are preserved), but if the on-disk content drifts from
+// what the current install would produce, surface a loud warning so the
+// user knows the deny list is stale (e.g. they switched git mode).
 async function writeSettings(
   mcpServers: Record<string, McpServer>,
   gitMode: "read-only" | "write",
   policy: GitWritePolicy,
-): Promise<void> {
+): Promise<{ kind: "installed" | "reused" }> {
+  const target = renderSettings(mcpServers, gitMode, policy);
   if (isDryRun()) {
     note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode}; skipped if present)`);
-    return;
+    return { kind: "installed" };
   }
   try {
     await fs.access(settingsPath());
-    return;
+    const { stale } = await detectDrift(settingsPath(), target);
+    if (stale) warnDrift(settingsPath(), "Edit Claude config / Git permissions");
+    return { kind: "reused" };
   } catch {
     /* not present — write a fresh one */
   }
   await fs.mkdir(claudeDir(), { recursive: true });
-  const settings = buildSettings(mcpServers, gitMode, policy);
-  await fs.writeFile(settingsPath(), JSON.stringify(settings, null, 2) + "\n");
+  await fs.writeFile(settingsPath(), target);
+  return { kind: "installed" };
 }
 
 // Optional: pick the agent CLI you want. Default on so the common case is
@@ -110,12 +126,15 @@ const tool: Tool = {
   label: "Claude Code",
   default: true,
   required: false,
-  async run(ctx) {
+  async run(ctx): Promise<ToolStatus> {
     await sh(
       "bun install -g @anthropic-ai/claude-code || npm install -g @anthropic-ai/claude-code",
       { quiet: true },
     );
-    await writeSettings(ctx.mcpServers, ctx.gitMode, ctx.gitWritePolicy);
+    const r = await writeSettings(ctx.mcpServers, ctx.gitMode, ctx.gitWritePolicy);
+    return r.kind === "installed"
+      ? { kind: "installed" }
+      : { kind: "reused", note: "settings.json already present" };
   },
 };
 

@@ -45,11 +45,11 @@ else
   for f in cli.ts exec.ts env.ts dryrun.ts scenario.ts; do
     curl -fsSL "${RAW}/src/${f}" -o "src/${f}"
   done
-  for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo skills conventions; do
+  for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo skills conventions guide; do
     curl -fsSL "${RAW}/src/tools/${f}.ts" -o "src/tools/${f}.ts"
   done
   # Skills shipped onto every devbox. Keep in sync with SHIPPED_SKILLS in src/tools/skills.ts.
-  for s in code-review; do
+  for s in code-review code-simplify code-manual-tests; do
     mkdir -p "templates/skills/${s}"
     curl -fsSL "${RAW}/templates/skills/${s}/SKILL.md" -o "templates/skills/${s}/SKILL.md"
   done

@@ -103,7 +103,7 @@ If there are no findings, say so explicitly and confirm the change looks good to
 Save to:
  
 ```
-llm-notes/<branch-name>-<YYYYMMDD-HHMM>.md
+llm-notes/<branch-name>_code-review_<YYYYMMDD-HHMM>.md
 ```
  
 Create the `llm-notes/` directory if it does not exist.

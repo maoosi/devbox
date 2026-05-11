@@ -6,7 +6,7 @@ import type { Tool } from "./index.ts";
 
 // Skills shipped onto every devbox. Add a new entry here AND fetch it in
 // install.sh's skills loop (raw.githubusercontent.com has no directory listing).
-export const SHIPPED_SKILLS = ["code-review"] as const;
+export const SHIPPED_SKILLS = ["code-review", "code-simplify", "code-manual-tests"] as const;
 
 // Resolve a skill's source SKILL.md whether we're running from a repo clone
 // (cwd is the repo root) or under `curl | bash` where install.sh has fetched
@@ -32,7 +32,7 @@ async function readFirst(paths: string[]): Promise<string | null> {
 const tool: Tool = {
   id: "skills",
   label: "Skills",
-  hint: "code-review, …",
+  hint: "code-review, code-simplify, code-manual-tests",
   default: true,
   required: false,
   async run() {

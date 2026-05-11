@@ -31,6 +31,33 @@ describe("buildAgentsMd", () => {
     expect(md).toContain("git push --no-verify");
   });
 
+  test("default rules section is always present and lists all 12 rules", () => {
+    const md = buildAgentsMd(ctx({}));
+    expect(md).toContain("## Default rules");
+    for (let n = 1; n <= 12; n++) {
+      expect(md).toContain(`### Rule ${n} —`);
+    }
+  });
+
+  test("default rules appear before any tool-gated section", () => {
+    const md = buildAgentsMd(ctx({
+      selectedToolIds: new Set(["mcp", "agent-browser", "socket"]),
+      secretsManager: "doppler",
+    }));
+    const rulesIdx = md.indexOf("## Default rules");
+    const githubIdx = md.indexOf("## GitHub");
+    const browserIdx = md.indexOf("## Browser");
+    const packageIdx = md.indexOf("## Package installs");
+    const secretsIdx = md.indexOf("## Secrets");
+    const deniedIdx = md.indexOf("## Denied actions");
+    expect(rulesIdx).toBeGreaterThan(-1);
+    expect(rulesIdx).toBeLessThan(githubIdx);
+    expect(rulesIdx).toBeLessThan(browserIdx);
+    expect(rulesIdx).toBeLessThan(packageIdx);
+    expect(rulesIdx).toBeLessThan(secretsIdx);
+    expect(rulesIdx).toBeLessThan(deniedIdx);
+  });
+
   test("denied-actions documents merge-into-main block when write+pushMain=false", () => {
     const md = buildAgentsMd(ctx({
       gitMode: "write",

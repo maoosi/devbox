@@ -44,11 +44,13 @@ import mcp from "./mcp.ts";
 import repo from "./repo.ts";
 import skills from "./skills.ts";
 import conventions from "./conventions.ts";
+import guide from "./guide.ts";
 
 // Order matters:
 //   - github runs before repo (clone needs ctx.tokens.GH_TOKEN).
 //   - claude runs after mcp so ctx.mcpServers is populated when it writes settings.json.
-//   - conventions runs last — it reads ctx.selectedToolIds to gate AGENTS.md sections.
+//   - conventions and guide run last — they read ctx.selectedToolIds and
+//     ctx.gitMode to gate sections in the markdown they write.
 export const tools: Tool[] = [
   system,
   runtimes,
@@ -64,6 +66,7 @@ export const tools: Tool[] = [
   claude,
   skills,
   conventions,
+  guide,
 ];
 
 // Resolves which tools to actually run, given:

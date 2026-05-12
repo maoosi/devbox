@@ -348,18 +348,11 @@ async function main(): Promise<void> {
     "Connect from a remote SSH client"
   );
 
-  const shouldDropShell = !isDryRun() && !scenario && process.stdout.isTTY;
-  if (shouldDropShell) {
-    p.outro(`All set — dropping you into ${cloneDirDisplay(repo.slug)}. Type \`exit\` to return.`);
-    // bash -l reads /etc/profile then ~/.profile (which on Ubuntu sources
-    // ~/.bashrc), picking up the devbox.sh source line. When the user exits,
-    // control returns to install.sh which exits to the original shell.
-    await runInteractive("bash", ["-l"], { cwd: cloneDir(repo.slug) });
-  } else {
-    p.outro(
-      "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."
-    );
-  }
+  // bun can't mutate the parent SSH shell's env, so we print a command for
+  // the user to run instead of spawning a nested bash. `source ~/.bashrc`
+  // re-sources ~/.bashrc.d/devbox.sh (env file + exports + aliases + the
+  // interactive auto-cd into ~/<slug>) without forking a new shell.
+  p.outro("All set. Run `source ~/.bashrc` to pick up env + aliases.");
 }
 
 main().catch((err) => {

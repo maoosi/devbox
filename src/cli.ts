@@ -261,7 +261,7 @@ async function main(): Promise<void> {
     // (e.g. Claude Code Desktop's remote integration) inherit GH_TOKEN
     // without needing .bashrc to source.
     await writeSystemEnv(ctx.tokens);
-    await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases });
+    await writeShellInit({ exports: ctx.exports, aliases: ctx.aliases, cdSlug: repo.slug });
   }
 
   if (aborted) {
@@ -307,9 +307,12 @@ async function main(): Promise<void> {
       p.log.info(
         "Starting `claude login` — follow the OAuth flow in your browser."
       );
-      // Run from the clone so Claude Code's first-run trust prompt records the
-      // actual work directory as trusted (no nag on first `claude` in-repo).
-      const code = await runInteractive("claude", ["login"], { cwd: cloneDir(repo.slug) });
+      // Shell-level cd before exec — spawn's cwd option is honored by the OS,
+      // but the `claude` shim re-chdirs to $HOME for the login subcommand, so
+      // we hand it a cwd it can't easily undo. exec replaces bash with claude
+      // so the cd-then-exec is atomic from claude's perspective.
+      const dir = cloneDir(repo.slug);
+      const code = await runInteractive("bash", ["-c", `cd "${dir}" && exec claude login`]);
       if (code !== 0) {
         p.log.warn("`claude login` did not complete. Run it manually later.");
       }
@@ -345,9 +348,18 @@ async function main(): Promise<void> {
     "Connect from a remote SSH client"
   );
 
-  p.outro(
-    "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."
-  );
+  const shouldDropShell = !isDryRun() && !scenario && process.stdout.isTTY;
+  if (shouldDropShell) {
+    p.outro(`All set — dropping you into ${cloneDirDisplay(repo.slug)}. Type \`exit\` to return.`);
+    // bash -l reads /etc/profile then ~/.profile (which on Ubuntu sources
+    // ~/.bashrc), picking up the devbox.sh source line. When the user exits,
+    // control returns to install.sh which exits to the original shell.
+    await runInteractive("bash", ["-l"], { cwd: cloneDir(repo.slug) });
+  } else {
+    p.outro(
+      "All set. Open a fresh shell (or run `exec bash -l`) to pick up env + aliases."
+    );
+  }
 }
 
 main().catch((err) => {

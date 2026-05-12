@@ -102,11 +102,12 @@ export async function writeSystemEnv(vars: EnvVars): Promise<void> {
 export async function writeShellInit(opts: {
   exports?: string[];
   aliases?: string[];
+  cdSlug?: string;
 }): Promise<void> {
   const shFile = devboxSh();
   const bashrcFile = bashrc();
   if (isDryRun()) {
-    note("write", `${shFile} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases)`);
+    note("write", `${shFile} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases${opts.cdSlug ? ", auto-cd" : ""})`);
     note("append", `${bashrcFile} (source line, if missing)`);
     return;
   }
@@ -116,8 +117,13 @@ export async function writeShellInit(opts: {
     `[ -f ${envFile()} ] && set -a && . ${envFile()} && set +a`,
     ...(opts.exports ?? []),
     ...(opts.aliases ?? []),
-    "",
   ];
+  if (opts.cdSlug) {
+    // Interactive-only — some distros source .bashrc for non-interactive
+    // shells (scp, rsync, `bash -c "…"`) and an unguarded cd would break them.
+    lines.push(`[[ $- == *i* ]] && [ -d ~/${opts.cdSlug} ] && cd ~/${opts.cdSlug}`);
+  }
+  lines.push("");
   await fs.writeFile(shFile, lines.join("\n"));
 
   let body = "";

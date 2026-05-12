@@ -2,7 +2,7 @@ import { describe, test, expect, afterEach } from "bun:test";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { parseRepoUrl, ghFineGrainedTokenUrl, ghClassicTokenUrl, writeEnv, readEnv } from "../../src/env.ts";
+import { parseRepoUrl, ghFineGrainedTokenUrl, ghClassicTokenUrl, writeEnv, readEnv, writeShellInit } from "../../src/env.ts";
 
 describe("parseRepoUrl", () => {
   test("https URL", () => {
@@ -148,5 +148,45 @@ describe("writeEnv / readEnv round-trip", () => {
     expect(body).toContain('QUOTED="has \\"quotes\\" inside"');
 
     expect(await readEnv()).toEqual(original);
+  });
+});
+
+describe("writeShellInit", () => {
+  let tmpHome: string | undefined;
+  const origHome = process.env.HOME;
+  afterEach(async () => {
+    if (tmpHome) await fs.rm(tmpHome, { recursive: true, force: true });
+    process.env.HOME = origHome;
+    tmpHome = undefined;
+  });
+
+  async function setup(): Promise<string> {
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "devbox-shell-"));
+    process.env.HOME = tmpHome;
+    return tmpHome;
+  }
+
+  test("omits cd line when cdSlug not provided", async () => {
+    const home = await setup();
+    await writeShellInit({ exports: ['export FOO=bar'] });
+    const body = await fs.readFile(path.join(home, ".bashrc.d", "devbox.sh"), "utf8");
+    expect(body).not.toContain("cd ~/");
+  });
+
+  test("emits guarded cd line when cdSlug provided", async () => {
+    const home = await setup();
+    await writeShellInit({ cdSlug: "myrepo" });
+    const body = await fs.readFile(path.join(home, ".bashrc.d", "devbox.sh"), "utf8");
+    expect(body).toContain("[[ $- == *i* ]] && [ -d ~/myrepo ] && cd ~/myrepo");
+  });
+
+  test("appends ~/.bashrc source line exactly once across reruns", async () => {
+    const home = await setup();
+    const SOURCE_LINE = `for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && . "$f"; done`;
+    await writeShellInit({ cdSlug: "r" });
+    await writeShellInit({ cdSlug: "r" });
+    const body = await fs.readFile(path.join(home, ".bashrc"), "utf8");
+    const occurrences = body.split(SOURCE_LINE).length - 1;
+    expect(occurrences).toBe(1);
   });
 });

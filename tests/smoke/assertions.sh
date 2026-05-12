@@ -130,6 +130,34 @@ case "$count" in
   *) fail "~/.bashrc has devbox source line $count times (expected 1)" ;;
 esac
 
+# ── Auto-cd into clone dir on interactive shells ──────────────────────────
+SLUG=$(grep -E '"repo"' "$SCENARIO_JSON" | sed -E 's|.*/([^/"]+)/?".*|\1|')
+CD_LINE="[[ \$- == *i* ]] && [ -d ~/${SLUG} ] && cd ~/${SLUG}"
+if grep -Fq "$CD_LINE" "$HOME/.bashrc.d/devbox.sh" 2>/dev/null; then
+  ok "devbox.sh has auto-cd line for $SLUG"
+else
+  fail "devbox.sh missing auto-cd line for $SLUG"
+fi
+
+# Fresh interactive shell should land in ~/<slug>. Start from $HOME so we
+# can observe the cd. `bash -ic` enables interactive flags ($- contains 'i').
+pwd_out=$(cd "$HOME" && bash -ic 'pwd' 2>/dev/null | tail -n1)
+if [ "$pwd_out" = "$HOME/$SLUG" ]; then
+  ok "interactive shell auto-cd → \$HOME/$SLUG"
+else
+  fail "interactive shell pwd='$pwd_out' (expected \$HOME/$SLUG)"
+fi
+
+# Socket-firewall alias must be resolvable in a fresh interactive shell —
+# proves the writeShellInit output is wired through .bashrc and loaded.
+if has_in_array "socket" "$TOOLS_LINE"; then
+  if bash -ic 'type npm' 2>/dev/null | grep -q "aliased to"; then
+    ok "npm alias loads in fresh interactive shell"
+  else
+    fail "npm alias not loaded in fresh interactive shell"
+  fi
+fi
+
 # ── Re-run-only checks ────────────────────────────────────────────────────
 if [ "$PHASE" = "rerun" ]; then
   case "$SECRETS" in

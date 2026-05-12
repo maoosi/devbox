@@ -114,7 +114,7 @@ agent-browser network requests --json
 
 const PACKAGE_INSTALLS_SECTION = `## Package installs
 
-- \`npm\`, \`pnpm\`, \`yarn\`, \`pip\`, \`uv\`, \`cargo\` are aliased through \`sfw\` (Socket Firewall) — known-malicious packages are blocked.
+- \`npm\`, \`pnpm\`, \`yarn\`, \`pip\`, \`uv\`, \`cargo\` route install-like subcommands (\`install\`, \`add\`, \`update\`, …) through \`sfw\` (Socket Firewall), which blocks known-malicious packages at install. Other subcommands (\`run\`, \`dev\`, \`test\`, \`exec\`, …) bypass sfw and talk to the network directly, so tools they spawn (Doppler, \`gh\`) see the real cert chain. Use \`command <tool> …\` to skip sfw on an install if you ever need to.
 - \`ignore-scripts=true\` is set globally. If a package needs scripts, run it explicitly: \`pnpm install --ignore-scripts=false <pkg>\`.
 - \`bun install\` is not wrapped — prefer pnpm where you have a choice.
 `;

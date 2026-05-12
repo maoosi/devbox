@@ -29,6 +29,20 @@ for sf in "$SMOKE_DIR"/scenarios/*.json; do
   fi
 done
 
+# Curl-mode pass on s1-minimal: exercises install.sh's tarball-fetch code path
+# (production install) against a locally-built tarball. The local-mode scenarios
+# above use DEVBOX_LOCAL_SRC and bypass that code path, so without this check the
+# two install branches can drift silently (see prior managed-file.ts incident).
+echo
+echo "════════════════════════════════════════════"
+echo "  scenario: s1-minimal (curl mode)"
+echo "════════════════════════════════════════════"
+if "$SMOKE_DIR/run-scenario.sh" s1-minimal curl; then
+  PASSED+=("s1-minimal-curl")
+else
+  FAILED+=("s1-minimal-curl")
+fi
+
 echo
 echo "════════════════════════════════════════════"
 echo "  summary"

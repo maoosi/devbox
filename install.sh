@@ -38,21 +38,19 @@ if [ -n "${DEVBOX_LOCAL_SRC:-}" ]; then
   step "copying devbox cli from ${DEVBOX_LOCAL_SRC}"
   cp -r "${DEVBOX_LOCAL_SRC}/package.json" "${DEVBOX_LOCAL_SRC}/tsconfig.json" "${DEVBOX_LOCAL_SRC}/src" "${DEVBOX_LOCAL_SRC}/templates" .
 else
+  # Fetch the whole repo as a tarball and selectively extract. The previous
+  # approach (a hand-maintained list of curl calls) silently broke whenever
+  # a new src/*.ts file was added without updating the list. The tarball glob
+  # auto-discovers everything under src/ and templates/, eliminating drift.
+  #
+  # DEVBOX_TARBALL_URL override exists so the smoke harness can point at a
+  # locally-built tarball (file:// or http://) and exercise this exact code
+  # path without needing a pushed commit on GitHub.
+  TARBALL_URL="${DEVBOX_TARBALL_URL:-https://codeload.github.com/${REPO}/tar.gz/${BRANCH}}"
   step "fetching devbox cli"
-  mkdir -p src/tools templates
-  curl -fsSL "${RAW}/package.json"  -o package.json
-  curl -fsSL "${RAW}/tsconfig.json" -o tsconfig.json
-  for f in cli.ts exec.ts env.ts dryrun.ts scenario.ts; do
-    curl -fsSL "${RAW}/src/${f}" -o "src/${f}"
-  done
-  for f in index system runtimes claude github doppler infisical agent-browser socket vite-plus ignore-scripts mcp repo skills conventions guide; do
-    curl -fsSL "${RAW}/src/tools/${f}.ts" -o "src/tools/${f}.ts"
-  done
-  # Skills shipped onto every devbox. Keep in sync with SHIPPED_SKILLS in src/tools/skills.ts.
-  for s in code-review code-simplify code-manual-tests; do
-    mkdir -p "templates/skills/${s}"
-    curl -fsSL "${RAW}/templates/skills/${s}/SKILL.md" -o "templates/skills/${s}/SKILL.md"
-  done
+  curl -fsSL "$TARBALL_URL" \
+    | tar -xz --strip-components=1 --wildcards \
+        '*/package.json' '*/tsconfig.json' '*/src/*' '*/templates/*'
 fi
 
 step "installing dependencies"

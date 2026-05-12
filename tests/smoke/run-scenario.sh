@@ -6,13 +6,22 @@
 #   4. Run install.sh again (rerun over existing state).
 #   5. Run rerun assertions (no-op idempotency, "Reusing token" log line).
 #
-# Usage: run-scenario.sh <scenario-id>
+# Usage: run-scenario.sh <scenario-id> [mode]
 #        e.g. run-scenario.sh s2-doppler
+#             run-scenario.sh s1-minimal curl
+#
+# Modes:
+#   local (default) — DEVBOX_LOCAL_SRC bulk-copy path; runs the full fresh+rerun cycle.
+#   curl            — pack /srv/devbox into a tarball, serve via file://, exercise
+#                     install.sh's DEVBOX_TARBALL_URL path. Fresh install + assertions
+#                     only (no rerun cycle — point is to catch file-selection drift).
 
 set -euo pipefail
 
 SCENARIO_ID="${1:-}"
-[ -n "$SCENARIO_ID" ] || { echo "usage: $0 <scenario-id>" >&2; exit 2; }
+MODE="${2:-local}"
+[ -n "$SCENARIO_ID" ] || { echo "usage: $0 <scenario-id> [mode]" >&2; exit 2; }
+case "$MODE" in local|curl) ;; *) echo "unknown mode: $MODE (expected local|curl)" >&2; exit 2 ;; esac
 
 SMOKE_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SMOKE_DIR/../.." && pwd)"
@@ -31,7 +40,7 @@ IMAGE="devbox-smoke:latest"
 echo ">>> building $IMAGE (cached on first build)"
 docker build -q -t "$IMAGE" -f "$SMOKE_DIR/Dockerfile" "$SMOKE_DIR" >/dev/null
 
-echo ">>> running scenario: $SCENARIO_ID"
+echo ">>> running scenario: $SCENARIO_ID (mode: $MODE)"
 docker run --rm \
   -v "$REPO_DIR:/srv/devbox:ro" \
   -v "$SMOKE_DIR:/srv/smoke:ro" \
@@ -40,6 +49,7 @@ docker run --rm \
   -e DEVBOX_NO_TTY=1 \
   -e DEVBOX_SKIP_BROWSER_DEPS=1 \
   -e SCENARIO_ID="$SCENARIO_ID" \
+  -e MODE="$MODE" \
   "$IMAGE" \
   bash -c '
     set -euo pipefail
@@ -54,6 +64,30 @@ docker run --rm \
     load_env() {
       [ -f "$HOME/.bashrc.d/devbox.sh" ] && source "$HOME/.bashrc.d/devbox.sh" || true
     }
+
+    if [ "$MODE" = "curl" ]; then
+      # Pack /srv/devbox into a tarball shaped like GitHub'"'"'s (one top-level
+      # dir, stripped by --strip-components=1 in install.sh), then point the
+      # installer at it via file://. This exercises install.sh'"'"'s tarball
+      # extract path end-to-end — catches drift where a new file under src/
+      # or templates/ is missing from the install.sh selection.
+      echo "════════ packing tarball (curl mode) ════════"
+      mkdir -p /tmp/tar-stage/devbox-main
+      cp -r /srv/devbox/package.json /srv/devbox/tsconfig.json \
+            /srv/devbox/src /srv/devbox/templates \
+            /tmp/tar-stage/devbox-main/
+      tar -czf /tmp/devbox.tar.gz -C /tmp/tar-stage devbox-main
+      unset DEVBOX_LOCAL_SRC
+      export DEVBOX_TARBALL_URL=file:///tmp/devbox.tar.gz
+
+      echo "════════ fresh install (curl mode) ════════"
+      bash /srv/devbox/install.sh --scenario /tmp/scenario.json 2>&1 | tee /tmp/devbox-fresh.log
+
+      load_env
+      echo "════════ assertions: fresh ════════"
+      /tmp/assertions.sh "$SCENARIO_ID" fresh /tmp/scenario.json
+      exit 0
+    fi
 
     echo "════════ fresh install ════════"
     bash /srv/devbox/install.sh --scenario /tmp/scenario.json 2>&1 | tee /tmp/devbox-fresh.log
@@ -91,4 +125,4 @@ docker run --rm \
     /tmp/assertions.sh "$SCENARIO_ID" rerun /tmp/scenario.json
   '
 
-echo ">>> $SCENARIO_ID PASSED"
+echo ">>> $SCENARIO_ID ($MODE) PASSED"

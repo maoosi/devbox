@@ -18,7 +18,7 @@ Devbox runs on any Ubuntu machine, but the cleanest setup is one Orbstack VM per
 
 - In the **Orbstack app**, create a new machine: Ubuntu, latest, arm64, name `devbox-<project>`, **Isolate machine**, **Network Isolation**.
 - Open its shell, run the install command above.
-- Reconnect later with `ssh devbox-<project>@orb`, then `cd ~/<repo>` (the clone folder is named after the repo).
+- Reconnect later with `ssh devbox-<project>@orb`, then `cd ~/<project>` (the clone folder is named after the repo).
 
 Plain SSH or any other Linux host works too — the install steps are identical.
 

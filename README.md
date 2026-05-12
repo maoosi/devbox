@@ -16,9 +16,9 @@ The installer asks for the repo URL, picks a secrets manager, and walks you thro
 
 Devbox runs on any Ubuntu machine, but the cleanest setup is one Orbstack VM per repo on a Mac:
 
-- In the **Orbstack app**, create a new machine: Ubuntu, latest, arm64, **Isolate machine**.
+- In the **Orbstack app**, create a new machine: Ubuntu, latest, arm64, name `devbox-<project>`, **Isolate machine**, **Network Isolation**.
 - Open its shell, run the install command above.
-- Reconnect later with `ssh devbox-<slug>@orb`, then `cd ~/<repo>` (the clone folder is named after the repo).
+- Reconnect later with `ssh devbox-<project>@orb`, then `cd ~/<repo>` (the clone folder is named after the repo).
 
 Plain SSH or any other Linux host works too — the install steps are identical.
 
@@ -59,4 +59,5 @@ Walks the prompts and prints every command/file the installer would run, without
 
 - `bun install` is not wrapped by Socket Firewall. Prefer pnpm where you can.
 - `ignore-scripts=true` breaks packages that legitimately need scripts (`sharp`, `puppeteer`, …). Per-package escape: `pnpm install --ignore-scripts=false <pkg>`.
-- If `socket.dev` is unreachable, `sfw` fails closed. Emergency bypass: `unalias npm` for one shell.
+- If `socket.dev` is unreachable, `sfw` fails closed. Emergency bypass: `command pnpm install …` (or `command npm install …`) skips the wrapper for one invocation.
+- `sfw` only scans install-like subcommands. Runtime commands (`pnpm run`, `cargo build`, `npx`) bypass it so tools they spawn (Doppler, `gh`) hit the network directly.

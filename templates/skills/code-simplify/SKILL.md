@@ -144,7 +144,7 @@ After:
 Trailing inline, lowercase is fine:
 
 ```js
-const msg = 'Hello' // set default message
+const msg = "Hello"; // set default message
 ```
 
 ---

@@ -26,24 +26,24 @@ Plain SSH or any other Linux host works too — the install steps are identical.
 
 ### Default
 
-| ✨ | 📦 |
-| --- | --- |
-| **Per-project isolation** | one Ubuntu machine per repo, so clone, PAT, and secrets stay scoped to that single project |
-| **Fresh Ubuntu bootstrap** | starts from a clean Ubuntu host and sets up the devbox in one install flow |
-| **Git safety mode** | read-only or write, chosen at install; write mode enforced by a `pre-push` hook |
-| **Agent guardrails** | deny rules for risky commands like `git push --force`, `git reset --hard`, `npm publish`, … |
-| **Supply chain defaults** | `npm`/`pnpm`/`yarn`/`pip`/`uv`/`cargo` aliased through Socket Firewall; `ignoreScripts = true` globally |
-| **Agent workflow defaults** | writes project-scoped `~/AGENTS.md` conventions and wires a GitHub MCP server |
-| **Core runtimes** | Bun, Node LTS (via fnm), pnpm |
-| **GitHub tooling** | `gh` CLI with a repo-scoped fine-grained token flow |
+| ✨                          | 📦                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Per-project isolation**   | one Ubuntu machine per repo, so clone, PAT, and secrets stay scoped to that single project              |
+| **Fresh Ubuntu bootstrap**  | starts from a clean Ubuntu host and sets up the devbox in one install flow                              |
+| **Git safety mode**         | read-only or write, chosen at install; write mode enforced by a `pre-push` hook                         |
+| **Agent guardrails**        | deny rules for risky commands like `git push --force`, `git reset --hard`, `npm publish`, …             |
+| **Supply chain defaults**   | `npm`/`pnpm`/`yarn`/`pip`/`uv`/`cargo` aliased through Socket Firewall; `ignoreScripts = true` globally |
+| **Agent workflow defaults** | writes project-scoped `~/AGENTS.md` conventions and wires a GitHub MCP server                           |
+| **Core runtimes**           | Bun, Node LTS (via fnm), pnpm                                                                           |
+| **GitHub tooling**          | `gh` CLI with a repo-scoped fine-grained token flow                                                     |
 
 ### Optional
 
-| ✨ | 📦 |
-| --- | --- |
-| **Agent CLIs** | Claude Code |
-| **Agent tools** | `agent-browser`, extra skills |
-| **Dev tools** | Vite+ |
+| ✨                  | 📦                                                       |
+| ------------------- | -------------------------------------------------------- |
+| **Agent CLIs**      | Claude Code                                              |
+| **Agent tools**     | `agent-browser`, extra skills                            |
+| **Dev tools**       | Vite+                                                    |
 | **Secrets manager** | Doppler or Infisical (one project, read-only token flow) |
 
 ## 🧪 Dry run

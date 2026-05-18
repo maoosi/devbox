@@ -29,17 +29,25 @@ export async function loadScenario(path: string): Promise<Scenario> {
   const identEmail = req(ident, "email", "string", "gitIdentity.email") as string;
 
   const gitMode = req(raw, "gitMode", "string") as string;
-  if (!MODES.has(gitMode)) throw new Error(`scenario.gitMode: must be "read-only" or "write" (got "${gitMode}")`);
+  if (!MODES.has(gitMode))
+    throw new Error(`scenario.gitMode: must be "read-only" or "write" (got "${gitMode}")`);
 
   const wp = req(raw, "gitWritePolicy", "object") as Record<string, unknown>;
   const writePolicy: GitWritePolicy = {
     pushMain: req(wp, "pushMain", "boolean", "gitWritePolicy.pushMain") as boolean,
-    deleteBranches: req(wp, "deleteBranches", "boolean", "gitWritePolicy.deleteBranches") as boolean,
+    deleteBranches: req(
+      wp,
+      "deleteBranches",
+      "boolean",
+      "gitWritePolicy.deleteBranches",
+    ) as boolean,
   };
 
   const secretsManager = req(raw, "secretsManager", "string") as string;
   if (!SECRETS.has(secretsManager)) {
-    throw new Error(`scenario.secretsManager: must be "doppler" | "infisical" | "none" (got "${secretsManager}")`);
+    throw new Error(
+      `scenario.secretsManager: must be "doppler" | "infisical" | "none" (got "${secretsManager}")`,
+    );
   }
 
   const tools = req(raw, "selectedToolIds", "object") as unknown;

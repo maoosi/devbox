@@ -31,16 +31,24 @@ describe("buildGuideMd", () => {
   });
 
   test("doppler block appears iff secretsManager is doppler", () => {
-    expect(buildGuideMd(ctx({ secretsManager: "none" }))).not.toContain("### Doppler service token");
-    expect(buildGuideMd(ctx({ secretsManager: "infisical" }))).not.toContain("### Doppler service token");
+    expect(buildGuideMd(ctx({ secretsManager: "none" }))).not.toContain(
+      "### Doppler service token",
+    );
+    expect(buildGuideMd(ctx({ secretsManager: "infisical" }))).not.toContain(
+      "### Doppler service token",
+    );
     const md = buildGuideMd(ctx({ secretsManager: "doppler" }));
     expect(md).toContain("### Doppler service token");
     expect(md).toContain("DOPPLER_TOKEN");
   });
 
   test("infisical block appears iff secretsManager is infisical", () => {
-    expect(buildGuideMd(ctx({ secretsManager: "none" }))).not.toContain("### Infisical service token");
-    expect(buildGuideMd(ctx({ secretsManager: "doppler" }))).not.toContain("### Infisical service token");
+    expect(buildGuideMd(ctx({ secretsManager: "none" }))).not.toContain(
+      "### Infisical service token",
+    );
+    expect(buildGuideMd(ctx({ secretsManager: "doppler" }))).not.toContain(
+      "### Infisical service token",
+    );
     const md = buildGuideMd(ctx({ secretsManager: "infisical" }));
     expect(md).toContain("### Infisical service token");
     expect(md).toContain("INFISICAL_TOKEN");
@@ -58,10 +66,12 @@ describe("buildGuideMd", () => {
   });
 
   test("git permissions section reflects current mode and policy", () => {
-    const writeMd = buildGuideMd(ctx({
-      gitMode: "write",
-      gitWritePolicy: { pushMain: true, deleteBranches: false },
-    }));
+    const writeMd = buildGuideMd(
+      ctx({
+        gitMode: "write",
+        gitWritePolicy: { pushMain: true, deleteBranches: false },
+      }),
+    );
     expect(writeMd).toContain("## Git permissions");
     expect(writeMd).toContain("Current mode: **write**");
     expect(writeMd).toContain("Push to default branch: allowed");

@@ -7,7 +7,12 @@ import type { Tool, ToolStatus } from "./index.ts";
 // Skills shipped onto every devbox. install.sh fetches everything under
 // templates/ via tarball glob, so a new skill folder is picked up
 // automatically — only this array needs the entry.
-export const SHIPPED_SKILLS = ["code-review", "code-simplify", "code-checklist", "code-changelog"] as const;
+export const SHIPPED_SKILLS = [
+  "code-review",
+  "code-simplify",
+  "code-checklist",
+  "code-changelog",
+] as const;
 
 // Resolve a skill's source SKILL.md whether we're running from a repo clone
 // (cwd is the repo root) or under `curl | bash` where install.sh has fetched
@@ -73,7 +78,8 @@ const tool: Tool = {
       fresh.push(name);
     }
 
-    if (fresh.length === 0) return { kind: "reused", note: `${reused.length} skill(s) already present` };
+    if (fresh.length === 0)
+      return { kind: "reused", note: `${reused.length} skill(s) already present` };
     if (reused.length === 0) return { kind: "installed", note: fresh.join(", ") };
     return { kind: "mixed", note: `installed ${fresh.join(", ")}; reused ${reused.join(", ")}` };
   },

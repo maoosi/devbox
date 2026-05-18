@@ -37,7 +37,7 @@ const tool: Tool = {
         ``,
         `# True iff $2 matches one of the | -separated words in $1.`,
         `_devbox_sfw_match() {`,
-        `  local pat="^($1)\$"`,
+        `  local pat="^($1)$"`,
         `  [[ "$2" =~ $pat ]]`,
         `}`,
         ``,

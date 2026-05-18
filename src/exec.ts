@@ -13,18 +13,14 @@ export type RunOptions = {
 
 export type RunResult = { code: number; stdout: string; stderr: string };
 
-export async function run(
-  cmd: string,
-  args: string[],
-  opts: RunOptions = {},
-): Promise<RunResult> {
+export async function run(cmd: string, args: string[], opts: RunOptions = {}): Promise<RunResult> {
   if (isDryRun() && !opts.force) {
     note("exec", `${cmd} ${args.join(" ")}`);
     return { code: 0, stdout: "", stderr: "" };
   }
   const child = spawn(cmd, args, {
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,
+    env: { ...process.env, ...opts.env } as NodeJS.ProcessEnv,
     cwd: opts.cwd,
   });
   let stdout = "";

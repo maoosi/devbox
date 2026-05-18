@@ -84,6 +84,7 @@ Format:
 ## Finalise Summary: [branch] -> [base]
 
 ### Pipeline
+
 - Simplify pass 1: <N changes | nothing to simplify>
 - Review: <findings: B/W/I/NIT counts | clean>
 - Resolutions: fixed N, pushed back N, deferred N
@@ -92,9 +93,11 @@ Format:
 - Changelog: <K bullets | empty>
 
 ### Push-backs (if any)
+
 - <severity> <title>: <one-liner reason>
 
 ### Verdict
+
 <Ready to merge | Needs human follow-up | Blocked on <reason>>
 ```
 

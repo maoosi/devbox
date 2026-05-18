@@ -135,9 +135,10 @@ to pick it up.
 
 function gitPermissionsSection(ctx: Ctx): string {
   const cur = ctx.gitMode === "write" ? "**write**" : "**read-only**";
-  const policy = ctx.gitMode === "write"
-    ? `Push to default branch: ${ctx.gitWritePolicy.pushMain ? "allowed" : "blocked"}. Branch deletion: ${ctx.gitWritePolicy.deleteBranches ? "allowed" : "blocked"}.`
-    : `Agent cannot commit, push, or open PRs. The PAT is read-scoped at the GitHub side as well.`;
+  const policy =
+    ctx.gitMode === "write"
+      ? `Push to default branch: ${ctx.gitWritePolicy.pushMain ? "allowed" : "blocked"}. Branch deletion: ${ctx.gitWritePolicy.deleteBranches ? "allowed" : "blocked"}.`
+      : `Agent cannot commit, push, or open PRs. The PAT is read-scoped at the GitHub side as well.`;
 
   return `## Git permissions
 

@@ -8,8 +8,12 @@ import type { Tool, ToolStatus, GitWritePolicy } from "./index.ts";
 // One devbox = one repo. The clone lives at ~/<slug> where <slug> is the repo
 // name from the GitHub URL — recognisable per-project (~/devbox, ~/Hello-World)
 // instead of a generic ~/repo across every box.
-export function cloneDir(slug: string): string { return path.join(home(), slug); }
-export function cloneDirDisplay(slug: string): string { return `~/${slug}`; }
+export function cloneDir(slug: string): string {
+  return path.join(home(), slug);
+}
+export function cloneDirDisplay(slug: string): string {
+  return `~/${slug}`;
+}
 
 // Pre-push hook script. The default-branch name is resolved at run time so
 // "main" / "master" / "trunk" are all handled. Sentinel SHA = branch deletion.
@@ -62,10 +66,7 @@ exit 0
 // Hook is only meaningful in write mode AND only when at least one restriction
 // applies. Read-only mode relies on the PAT scope (server-side) — installing a
 // hook there would just inconvenience the human if they ever pushed manually.
-export function shouldInstallHook(
-  gitMode: "read-only" | "write",
-  policy: GitWritePolicy,
-): boolean {
+export function shouldInstallHook(gitMode: "read-only" | "write", policy: GitWritePolicy): boolean {
   if (gitMode !== "write") return false;
   return !(policy.pushMain && policy.deleteBranches);
 }
@@ -107,7 +108,10 @@ const tool: Tool = {
       if (alreadyCloned) note("skip clone", `${target} already exists`);
       else note("clone", `${ctx.repo.url} → ${target}`);
       if (installHook) {
-        note("write", `${prePushPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`);
+        note(
+          "write",
+          `${prePushPath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain}, allowDelete=${ctx.gitWritePolicy.deleteBranches})`,
+        );
         note("write", `${preMergePath} (chmod +x; allowMain=${ctx.gitWritePolicy.pushMain})`);
       }
       return alreadyCloned

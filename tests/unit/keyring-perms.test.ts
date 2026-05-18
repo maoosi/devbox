@@ -27,7 +27,7 @@ describe("apt keyring permissions", () => {
       for (const m of src.matchAll(KEYRING_PATH)) keyrings.add(m[1]!);
 
       for (const name of keyrings) {
-        const escaped = name.replace(/[.\-]/g, "\\$&");
+        const escaped = name.replace(/[.-]/g, "\\$&");
         const chmodForFile = new RegExp(
           `chmod\\s+(?:go\\+r|g\\+r,o\\+r|o\\+r,g\\+r|a\\+r|\\+r|0?644)\\s+\\/usr\\/share\\/keyrings\\/${escaped}\\b`,
         );

@@ -53,10 +53,9 @@ const tool: Tool = {
     }
 
     p.log.message(
-      [
-        "Doppler service token — open your dashboard:",
-        "  https://dashboard.doppler.com/",
-      ].join("\n"),
+      ["Doppler service token — open your dashboard:", "  https://dashboard.doppler.com/"].join(
+        "\n",
+      ),
     );
     p.log.warn(
       [

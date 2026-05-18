@@ -4,18 +4,18 @@ import { selectTools, type Tool } from "../../src/tools/index.ts";
 const noop = async () => {};
 
 const fixture: Tool[] = [
-  { id: "system",        label: "system",        default: true,  required: true,  run: noop },
-  { id: "runtimes",      label: "runtimes",      default: true,  required: true,  run: noop },
-  { id: "github",        label: "github",        default: true,  required: true,  run: noop },
-  { id: "doppler",       label: "doppler",       default: true,  required: false, run: noop },
-  { id: "infisical",     label: "infisical",     default: false, required: false, run: noop },
-  { id: "agent-browser", label: "agent-browser", default: true,  required: false, run: noop },
-  { id: "socket",        label: "socket",        default: true,  required: false, run: noop },
-  { id: "vite-plus",     label: "vite-plus",     default: true,  required: false, run: noop },
-  { id: "ignore-scripts",label: "ignore-scripts",default: true,  required: true,  run: noop },
-  { id: "mcp",           label: "mcp",           default: true,  required: true,  run: noop },
-  { id: "repo",          label: "repo",          default: true,  required: true,  run: noop },
-  { id: "claude",        label: "claude",        default: true,  required: false, run: noop },
+  { id: "system", label: "system", default: true, required: true, run: noop },
+  { id: "runtimes", label: "runtimes", default: true, required: true, run: noop },
+  { id: "github", label: "github", default: true, required: true, run: noop },
+  { id: "doppler", label: "doppler", default: true, required: false, run: noop },
+  { id: "infisical", label: "infisical", default: false, required: false, run: noop },
+  { id: "agent-browser", label: "agent-browser", default: true, required: false, run: noop },
+  { id: "socket", label: "socket", default: true, required: false, run: noop },
+  { id: "vite-plus", label: "vite-plus", default: true, required: false, run: noop },
+  { id: "ignore-scripts", label: "ignore-scripts", default: true, required: true, run: noop },
+  { id: "mcp", label: "mcp", default: true, required: true, run: noop },
+  { id: "repo", label: "repo", default: true, required: true, run: noop },
+  { id: "claude", label: "claude", default: true, required: false, run: noop },
 ];
 
 const ids = (ts: Tool[]) => ts.map((t) => t.id);

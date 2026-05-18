@@ -1,12 +1,12 @@
 {
   "name": "devbox",
   "version": "0.0.11",
-  "description": "Per-project devbox for running AI agents safely on any Ubuntu machine.",
-  "type": "module",
   "private": true,
+  "description": "Per-project devbox for running AI agents safely on any Ubuntu machine.",
   "bin": {
     "devbox": "src/cli.ts"
   },
+  "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "start": "bun src/cli.ts",

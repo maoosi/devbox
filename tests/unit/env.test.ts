@@ -2,7 +2,14 @@ import { describe, test, expect, afterEach } from "bun:test";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
-import { parseRepoUrl, ghFineGrainedTokenUrl, ghClassicTokenUrl, writeEnv, readEnv, writeShellInit } from "../../src/env.ts";
+import {
+  parseRepoUrl,
+  ghFineGrainedTokenUrl,
+  ghClassicTokenUrl,
+  writeEnv,
+  readEnv,
+  writeShellInit,
+} from "../../src/env.ts";
 
 describe("parseRepoUrl", () => {
   test("https URL", () => {
@@ -168,7 +175,7 @@ describe("writeShellInit", () => {
 
   test("omits cd line when cdSlug not provided", async () => {
     const home = await setup();
-    await writeShellInit({ exports: ['export FOO=bar'] });
+    await writeShellInit({ exports: ["export FOO=bar"] });
     const body = await fs.readFile(path.join(home, ".bashrc.d", "devbox.sh"), "utf8");
     expect(body).not.toContain("cd ~/");
   });

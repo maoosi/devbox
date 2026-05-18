@@ -6,8 +6,12 @@ import { isDryRun, note } from "../dryrun.ts";
 import { detectDrift, warnDrift } from "../managed-file.ts";
 import type { Tool, ToolStatus, GitWritePolicy } from "./index.ts";
 
-function claudeDir(): string { return path.join(home(), ".claude"); }
-function settingsPath(): string { return path.join(claudeDir(), "settings.json"); }
+function claudeDir(): string {
+  return path.join(home(), ".claude");
+}
+function settingsPath(): string {
+  return path.join(claudeDir(), "settings.json");
+}
 
 export type McpServer = {
   command?: string;
@@ -51,9 +55,7 @@ const READ_ONLY_DENY = [
 // so it has to be denied here. Local `git merge` is intentionally NOT blocked
 // — the agent legitimately runs `git merge main` on a feature branch; the
 // pre-merge-commit hook catches the on-main case.
-const WRITE_NO_MAIN_DENY = [
-  "Bash(gh pr merge:*)",
-];
+const WRITE_NO_MAIN_DENY = ["Bash(gh pr merge:*)"];
 
 export function buildSettings(
   mcpServers: Record<string, McpServer>,
@@ -102,7 +104,10 @@ async function writeSettings(
 ): Promise<{ kind: "installed" | "reused" }> {
   const target = renderSettings(mcpServers, gitMode, policy);
   if (isDryRun()) {
-    note("write", `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode}; skipped if present)`);
+    note(
+      "write",
+      `${settingsPath()} (mcpServers: ${Object.keys(mcpServers).join(", ") || "none"}, mode: ${gitMode}; skipped if present)`,
+    );
     return { kind: "installed" };
   }
   try {

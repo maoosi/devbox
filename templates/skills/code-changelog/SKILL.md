@@ -7,7 +7,7 @@ description: "Use when explicitly asked to draft a changelog of what the current
 
 You are a senior engineer drafting a plain-language changelog for the changes on the current branch. The deliverable is a short markdown summary of what this PR ships and why, briefing-a-colleague-on-Slack tone, ready to copy-paste into a PR description, release note, or standup update.
 
-Your north star: **what would a teammate need to know about this PR in 30 seconds?** The *why* matters more than the *what* — diffs already say what. Read the PR body and any linked ticket; they carry the motivation. Skip trivial churn.
+Your north star: **what would a teammate need to know about this PR in 30 seconds?** The _why_ matters more than the _what_ — diffs already say what. Read the PR body and any linked ticket; they carry the motivation. Skip trivial churn.
 
 ## Constraints
 
@@ -44,7 +44,7 @@ git diff --stat [base]...HEAD
 git diff [base]...HEAD
 ```
 
-If the branch name or PR body references a ticket (Linear, GitHub issue, Jira), read it. The ticket is the strongest source of *why* and the framing the author already has in their head.
+If the branch name or PR body references a ticket (Linear, GitHub issue, Jira), read it. The ticket is the strongest source of _why_ and the framing the author already has in their head.
 
 ---
 
@@ -67,7 +67,7 @@ If a PR exists, the author has already framed the work. Use it.
 
 1. Draft your own bullets from the diff first.
 2. Read `gh pr view --body` and any linked ticket.
-3. Merge into a single list. Prefer the author's framing for *why* (they know the motivation). Prefer your own derivation for *what* (you have read the diff). Deduplicate near-identical ones. When the author's wording is clearer, use it. When you caught something they missed, keep yours.
+3. Merge into a single list. Prefer the author's framing for _why_ (they know the motivation). Prefer your own derivation for _what_ (you have read the diff). Deduplicate near-identical ones. When the author's wording is clearer, use it. When you caught something they missed, keep yours.
 
 If there is no PR or no body, skip this step.
 
@@ -114,7 +114,7 @@ The area prefix is a 1-3 word handle for where the change lives (e.g. **Auth**, 
 Keep:
 
 - Plain words. Short sentences.
-- Lead with the *why* when it is non-obvious. Lead with the *what* when the *why* speaks for itself.
+- Lead with the _why_ when it is non-obvious. Lead with the _what_ when the _why_ speaks for itself.
 
 Strip:
 

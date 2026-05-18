@@ -1,6 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import * as path from "node:path";
-import { prePushHook, preMergeCommitHook, shouldInstallHook, cloneDir, cloneDirDisplay } from "../../src/tools/repo.ts";
+import {
+  prePushHook,
+  preMergeCommitHook,
+  shouldInstallHook,
+  cloneDir,
+  cloneDirDisplay,
+} from "../../src/tools/repo.ts";
 
 describe("shouldInstallHook", () => {
   test("read-only never installs (regardless of policy)", () => {

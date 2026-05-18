@@ -17,11 +17,7 @@ async function pickRepo(preset?: Scenario["repo"]): Promise<Ctx["repo"]> {
     message: "GitHub repo URL?",
     placeholder: "https://github.com/owner/repo",
     validate: (s) =>
-      !s
-        ? "Required"
-        : !parseRepoUrl(s)
-        ? "Expected https://github.com/<owner>/<repo>"
-        : undefined,
+      !s ? "Required" : !parseRepoUrl(s) ? "Expected https://github.com/<owner>/<repo>" : undefined,
   });
   if (p.isCancel(v)) process.exit(1);
   return { url: v as string, ...parseRepoUrl(v as string)! };
@@ -49,9 +45,7 @@ async function pickGitMode(preset?: GitMode): Promise<GitMode> {
   return v as GitMode;
 }
 
-async function pickGitWritePolicy(
-  preset?: GitWritePolicy
-): Promise<GitWritePolicy> {
+async function pickGitWritePolicy(preset?: GitWritePolicy): Promise<GitWritePolicy> {
   if (preset) return preset;
   const v = await p.multiselect({
     message: "Extra write permissions (default: off)",
@@ -76,9 +70,7 @@ async function pickGitWritePolicy(
   };
 }
 
-async function pickSecretsManager(
-  preset?: Ctx["secretsManager"]
-): Promise<Ctx["secretsManager"]> {
+async function pickSecretsManager(preset?: Ctx["secretsManager"]): Promise<Ctx["secretsManager"]> {
   if (preset) return preset;
   const v = await p.select({
     message: "Secrets manager?",
@@ -120,30 +112,22 @@ async function pickGitIdentity(preset?: {
   // to append to the initial value. Pass exactly one.
   const name = await p.text({
     message: "Git user.name?",
-    ...(existingName
-      ? { initialValue: existingName }
-      : { placeholder: "Your Name" }),
+    ...(existingName ? { initialValue: existingName } : { placeholder: "Your Name" }),
     validate: (s) => (s && s.length >= 1 ? undefined : "Required"),
   });
   if (p.isCancel(name)) process.exit(1);
 
   const email = await p.text({
     message: "Git user.email?",
-    ...(existingEmail
-      ? { initialValue: existingEmail }
-      : { placeholder: "you@example.com" }),
-    validate: (s) =>
-      s && /.+@.+\..+/.test(s) ? undefined : "Expected an email address",
+    ...(existingEmail ? { initialValue: existingEmail } : { placeholder: "you@example.com" }),
+    validate: (s) => (s && /.+@.+\..+/.test(s) ? undefined : "Expected an email address"),
   });
   if (p.isCancel(email)) process.exit(1);
 
   return { name: (name as string).trim(), email: (email as string).trim() };
 }
 
-async function pickTools(
-  secrets: Ctx["secretsManager"],
-  presetIds?: string[]
-): Promise<Tool[]> {
+async function pickTools(secrets: Ctx["secretsManager"], presetIds?: string[]): Promise<Tool[]> {
   // The chosen secrets manager auto-installs; the other one is hidden from the prompt.
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
   if (presetIds) return selectTools(tools, new Set(presetIds), secrets);
@@ -219,9 +203,8 @@ async function main(): Promise<void> {
   // Spinner stamp per status. ✓ for new work, ↻ for a no-op reuse so the
   // user can see at a glance which tools actually ran on a re-run.
   const stamp = (s: ToolStatus): string => {
-    const symbol = s.kind === "installed" ? "✓"
-                 : s.kind === "reused"    ? "↻ reused"
-                                          : "✓ partial reuse";
+    const symbol =
+      s.kind === "installed" ? "✓" : s.kind === "reused" ? "↻ reused" : "✓ partial reuse";
     return s.note ? `${symbol} — ${s.note}` : symbol;
   };
 
@@ -273,7 +256,9 @@ async function main(): Promise<void> {
   // user tell at a glance whether a re-run actually changed anything (all
   // Reused = effective no-op) or which tools touched the system this run.
   const ok = results.filter((r): r is Extract<ToolResult, { status: "ok" }> => r.status === "ok");
-  const failed = results.filter((r): r is Extract<ToolResult, { status: "failed" }> => r.status === "failed");
+  const failed = results.filter(
+    (r): r is Extract<ToolResult, { status: "failed" }> => r.status === "failed",
+  );
   const installedIds = ok.filter((r) => r.toolStatus.kind === "installed").map((r) => r.id);
   const reusedIds = ok.filter((r) => r.toolStatus.kind === "reused").map((r) => r.id);
   const mixedIds = ok.filter((r) => r.toolStatus.kind === "mixed").map((r) => r.id);
@@ -304,9 +289,7 @@ async function main(): Promise<void> {
     } else if (scenario) {
       p.log.info("Skipping `claude login` — scenario mode (smoke test).");
     } else {
-      p.log.info(
-        "Starting `claude login` — follow the OAuth flow in your browser."
-      );
+      p.log.info("Starting `claude login` — follow the OAuth flow in your browser.");
       // Shell-level cd before exec — spawn's cwd option is honored by the OS,
       // but the `claude` shim re-chdirs to $HOME for the login subcommand, so
       // we hand it a cwd it can't easily undo. exec replaces bash with claude
@@ -328,7 +311,7 @@ async function main(): Promise<void> {
       `# then once connected:`,
       `cd ${cloneDirDisplay(repo.slug)}`,
     ].join("\n"),
-    "Reconnect later"
+    "Reconnect later",
   );
 
   // SSH host fields for any remote SSH client (Claude Desktop, VS Code Remote,
@@ -345,7 +328,7 @@ async function main(): Promise<void> {
       `SSH Port:      32222`,
       `Identity File: ~/.orbstack/ssh/id_ed25519`,
     ].join("\n"),
-    "Connect from a remote SSH client"
+    "Connect from a remote SSH client",
   );
 
   // bun can't mutate the parent SSH shell's env, so we print a command for

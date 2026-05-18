@@ -166,7 +166,8 @@ const tool: Tool = {
 
     if (isDryRun()) {
       note("write", `${agentsPath} (sections gated by installed tools; skipped if present)`);
-      if (installClaudeShim) note("write", `${claudeMdPath} (imports ~/AGENTS.md; skipped if present)`);
+      if (installClaudeShim)
+        note("write", `${claudeMdPath} (imports ~/AGENTS.md; skipped if present)`);
       return { kind: "installed" };
     }
 
@@ -178,7 +179,8 @@ const tool: Tool = {
     let agentsKind: "installed" | "reused";
     if (await fileExists(agentsPath)) {
       const { stale } = await detectDrift(agentsPath, agentsTarget);
-      if (stale) warnDrift(agentsPath, "Other handy things → Edit AGENTS.md or the 12 default rules");
+      if (stale)
+        warnDrift(agentsPath, "Other handy things → Edit AGENTS.md or the 12 default rules");
       agentsKind = "reused";
     } else {
       await fs.writeFile(agentsPath, agentsTarget);
@@ -200,7 +202,8 @@ const tool: Tool = {
     // AGENTS.md primarily. If the shim landed fresh while AGENTS.md was
     // reused, surface that as mixed so the user sees the shim was created.
     if (agentsKind === "installed") return { kind: "installed" };
-    if (claudeKind === "installed") return { kind: "mixed", note: "AGENTS.md reused; CLAUDE.md shim installed" };
+    if (claudeKind === "installed")
+      return { kind: "mixed", note: "AGENTS.md reused; CLAUDE.md shim installed" };
     return { kind: "reused", note: "AGENTS.md already present" };
   },
 };

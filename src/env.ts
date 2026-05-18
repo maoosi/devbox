@@ -9,11 +9,21 @@ import { run, sh } from "./exec.ts";
 export function home(): string {
   return process.env.HOME ?? homedir();
 }
-export function configDir(): string { return path.join(home(), ".config", "devbox"); }
-export function envFile(): string { return path.join(configDir(), "env"); }
-export function bashrcD(): string { return path.join(home(), ".bashrc.d"); }
-export function devboxSh(): string { return path.join(bashrcD(), "devbox.sh"); }
-export function bashrc(): string { return path.join(home(), ".bashrc"); }
+export function configDir(): string {
+  return path.join(home(), ".config", "devbox");
+}
+export function envFile(): string {
+  return path.join(configDir(), "env");
+}
+export function bashrcD(): string {
+  return path.join(home(), ".bashrc.d");
+}
+export function devboxSh(): string {
+  return path.join(bashrcD(), "devbox.sh");
+}
+export function bashrc(): string {
+  return path.join(home(), ".bashrc");
+}
 
 const SOURCE_LINE = `for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && . "$f"; done`;
 
@@ -32,7 +42,9 @@ export async function readEnv(): Promise<EnvVars> {
   }
   const out: EnvVars = {};
   for (const line of body.split("\n")) {
-    const m = line.match(/^([A-Z_][A-Z0-9_]*)="((?:[^"\\]|\\.)*)"$/) ?? line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+    const m =
+      line.match(/^([A-Z_][A-Z0-9_]*)="((?:[^"\\]|\\.)*)"$/) ??
+      line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
     if (!m) continue;
     out[m[1]!] = m[2]!.replace(/\\"/g, '"');
   }
@@ -68,7 +80,10 @@ const ETC_ENV_END = "# END devbox";
 
 export async function writeSystemEnv(vars: EnvVars): Promise<void> {
   if (isDryRun()) {
-    note("write", `${ETC_ENV} (devbox block, ${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`);
+    note(
+      "write",
+      `${ETC_ENV} (devbox block, ${Object.keys(vars).length} keys: ${Object.keys(vars).join(", ")})`,
+    );
     return;
   }
   // Read existing /etc/environment via sudo so we work whether mode is 0644
@@ -107,7 +122,10 @@ export async function writeShellInit(opts: {
   const shFile = devboxSh();
   const bashrcFile = bashrc();
   if (isDryRun()) {
-    note("write", `${shFile} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases${opts.cdSlug ? ", auto-cd" : ""})`);
+    note(
+      "write",
+      `${shFile} (${(opts.exports ?? []).length} exports, ${(opts.aliases ?? []).length} aliases${opts.cdSlug ? ", auto-cd" : ""})`,
+    );
     note("append", `${bashrcFile} (source line, if missing)`);
     return;
   }
@@ -137,9 +155,7 @@ export async function writeShellInit(opts: {
   }
 }
 
-export function parseRepoUrl(
-  url: string,
-): { owner: string; name: string; slug: string } | null {
+export function parseRepoUrl(url: string): { owner: string; name: string; slug: string } | null {
   const cleaned = url.trim().replace(/\.git$/, "");
   const m =
     cleaned.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)\/?$/) ??

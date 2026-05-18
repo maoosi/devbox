@@ -40,10 +40,12 @@ describe("buildAgentsMd", () => {
   });
 
   test("default rules appear before any tool-gated section", () => {
-    const md = buildAgentsMd(ctx({
-      selectedToolIds: new Set(["mcp", "agent-browser", "socket"]),
-      secretsManager: "doppler",
-    }));
+    const md = buildAgentsMd(
+      ctx({
+        selectedToolIds: new Set(["mcp", "agent-browser", "socket"]),
+        secretsManager: "doppler",
+      }),
+    );
     const rulesIdx = md.indexOf("## Default rules");
     const githubIdx = md.indexOf("## GitHub");
     const browserIdx = md.indexOf("## Browser");
@@ -59,27 +61,33 @@ describe("buildAgentsMd", () => {
   });
 
   test("denied-actions documents merge-into-main block when write+pushMain=false", () => {
-    const md = buildAgentsMd(ctx({
-      gitMode: "write",
-      gitWritePolicy: { pushMain: false, deleteBranches: false },
-    }));
+    const md = buildAgentsMd(
+      ctx({
+        gitMode: "write",
+        gitWritePolicy: { pushMain: false, deleteBranches: false },
+      }),
+    );
     expect(md).toContain("merges into the default branch");
     expect(md).toContain("gh pr merge");
   });
 
   test("denied-actions omits merge-into-main note when pushMain=true", () => {
-    const md = buildAgentsMd(ctx({
-      gitMode: "write",
-      gitWritePolicy: { pushMain: true, deleteBranches: false },
-    }));
+    const md = buildAgentsMd(
+      ctx({
+        gitMode: "write",
+        gitWritePolicy: { pushMain: true, deleteBranches: false },
+      }),
+    );
     expect(md).not.toContain("merges into the default branch");
   });
 
   test("denied-actions omits merge-into-main note in read-only mode", () => {
-    const md = buildAgentsMd(ctx({
-      gitMode: "read-only",
-      gitWritePolicy: { pushMain: false, deleteBranches: false },
-    }));
+    const md = buildAgentsMd(
+      ctx({
+        gitMode: "read-only",
+        gitWritePolicy: { pushMain: false, deleteBranches: false },
+      }),
+    );
     expect(md).not.toContain("merges into the default branch");
   });
 
@@ -99,8 +107,12 @@ describe("buildAgentsMd", () => {
 
   test("package-installs section appears iff socket or ignore-scripts is installed", () => {
     expect(buildAgentsMd(ctx({}))).not.toContain("## Package installs");
-    expect(buildAgentsMd(ctx({ selectedToolIds: new Set(["socket"]) }))).toContain("## Package installs");
-    expect(buildAgentsMd(ctx({ selectedToolIds: new Set(["ignore-scripts"]) }))).toContain("## Package installs");
+    expect(buildAgentsMd(ctx({ selectedToolIds: new Set(["socket"]) }))).toContain(
+      "## Package installs",
+    );
+    expect(buildAgentsMd(ctx({ selectedToolIds: new Set(["ignore-scripts"]) }))).toContain(
+      "## Package installs",
+    );
   });
 
   test("secrets section names the chosen manager and is omitted when none", () => {
@@ -134,8 +146,12 @@ describe("buildAgentsMd", () => {
   });
 
   test("drift-detection: output differs when git policy changes", () => {
-    const a = buildAgentsMd(ctx({ gitMode: "write", gitWritePolicy: { pushMain: false, deleteBranches: false } }));
-    const b = buildAgentsMd(ctx({ gitMode: "write", gitWritePolicy: { pushMain: true, deleteBranches: false } }));
+    const a = buildAgentsMd(
+      ctx({ gitMode: "write", gitWritePolicy: { pushMain: false, deleteBranches: false } }),
+    );
+    const b = buildAgentsMd(
+      ctx({ gitMode: "write", gitWritePolicy: { pushMain: true, deleteBranches: false } }),
+    );
     expect(a).not.toBe(b);
   });
 });

@@ -29,7 +29,10 @@ const tool: Tool = {
     const reused: string[] = [];
 
     const probeAndInstall = async (name: string, marker: string, install: () => Promise<void>) => {
-      if (await exists(marker)) { reused.push(name); return; }
+      if (await exists(marker)) {
+        reused.push(name);
+        return;
+      }
       await install();
       fresh.push(name);
     };

@@ -13,7 +13,10 @@ const tool: Tool = {
   required: true,
   async run() {
     await run("npm", ["config", "set", "ignore-scripts", "true"], { quiet: true });
-    await run("pnpm", ["config", "set", "ignore-scripts", "true"], { quiet: true, allowFail: true });
+    await run("pnpm", ["config", "set", "ignore-scripts", "true"], {
+      quiet: true,
+      allowFail: true,
+    });
 
     const bunfig = path.join(home(), ".bunfig.toml");
     if (isDryRun()) {

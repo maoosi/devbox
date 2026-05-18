@@ -40,10 +40,7 @@ const tool: Tool = {
     }
 
     p.log.message(
-      [
-        "Infisical service token — open your dashboard:",
-        "  https://app.infisical.com/",
-      ].join("\n"),
+      ["Infisical service token — open your dashboard:", "  https://app.infisical.com/"].join("\n"),
     );
     p.log.warn(
       [

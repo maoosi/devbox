@@ -3,8 +3,8 @@ import type { McpServer } from "./claude.ts";
 export type GitMode = "read-only" | "write";
 
 export type GitWritePolicy = {
-  pushMain: boolean;        // allow direct pushes to the default branch
-  deleteBranches: boolean;  // allow deleting branches (local + remote)
+  pushMain: boolean; // allow direct pushes to the default branch
+  deleteBranches: boolean; // allow deleting branches (local + remote)
 };
 
 export type Ctx = {
@@ -25,9 +25,9 @@ export type Ctx = {
 // (✓ / ↻) and group the end-of-run summary into Installed / Reused buckets,
 // so a re-run is visibly different from a first install.
 export type ToolStatus =
-  | { kind: "installed"; note?: string }   // work happened
-  | { kind: "reused"; note?: string }      // existing state preserved, no-op
-  | { kind: "mixed"; note?: string };      // some sub-actions installed, some reused
+  | { kind: "installed"; note?: string } // work happened
+  | { kind: "reused"; note?: string } // existing state preserved, no-op
+  | { kind: "mixed"; note?: string }; // some sub-actions installed, some reused
 
 export type Tool = {
   id: string;
@@ -91,7 +91,8 @@ export function selectTools(
   secretsManager: Ctx["secretsManager"],
 ): Tool[] {
   const isSecretsTool = (id: string) => id === "doppler" || id === "infisical";
-  const otherSecrets = secretsManager === "doppler" ? "infisical" : secretsManager === "infisical" ? "doppler" : null;
+  const otherSecrets =
+    secretsManager === "doppler" ? "infisical" : secretsManager === "infisical" ? "doppler" : null;
   const auto = new Set<string>(secretsManager !== "none" ? [secretsManager] : []);
   return allTools.filter((t) => {
     if (isSecretsTool(t.id) && otherSecrets === t.id) return false;

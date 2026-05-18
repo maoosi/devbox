@@ -12,7 +12,10 @@ import * as p from "@clack/prompts";
 // warning that points at ~/DEVBOX.md for the manual refresh path. Falsy on
 // fresh installs (no file yet) and on byte-equal matches (re-run is a true
 // no-op).
-export async function detectDrift(filePath: string, wouldWrite: string): Promise<{ stale: boolean }> {
+export async function detectDrift(
+  filePath: string,
+  wouldWrite: string,
+): Promise<{ stale: boolean }> {
   let onDisk: string;
   try {
     onDisk = await fs.readFile(filePath, "utf8");
@@ -32,7 +35,7 @@ export function warnDrift(filePath: string, devboxSection?: string): void {
     : `To edit by hand: see ~/DEVBOX.md.`;
   p.log.warn(
     `${filePath} on disk does not match current install settings.\n` +
-    `To refresh: delete the file and re-run the installer.\n` +
-    hint,
+      `To refresh: delete the file and re-run the installer.\n` +
+      hint,
   );
 }

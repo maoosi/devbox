@@ -35,9 +35,7 @@ const READ_ONLY_EXTRA = [
   "Bash(gh issue create:*)",
 ];
 
-const WRITE_NO_MAIN_EXTRA = [
-  "Bash(gh pr merge:*)",
-];
+const WRITE_NO_MAIN_EXTRA = ["Bash(gh pr merge:*)"];
 
 describe("buildSettings", () => {
   test("write mode + permissive policy: base deny only, no mcpServers key when empty", () => {

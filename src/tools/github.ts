@@ -67,7 +67,9 @@ async function collectToken(ctx: Ctx): Promise<string> {
   let token = await pasteToken("GitHub token");
   if (await tokenWorks(token)) return token;
 
-  p.log.warn("That token didn't validate. Many orgs disable fine-grained PATs — falling back to a classic PAT.");
+  p.log.warn(
+    "That token didn't validate. Many orgs disable fine-grained PATs — falling back to a classic PAT.",
+  );
   p.log.message(
     [
       "GitHub classic token (fallback):",

@@ -122,7 +122,8 @@ Skills live at \`~/.claude/skills/<name>/SKILL.md\`. Bundled with this devbox:
 
 - \`code-review\` — find real problems in the current branch and write a report
 - \`code-simplify\` — apply minimal-diff simplifications to the current branch
-- \`code-manual-tests\` — produce a manual-test checklist for the current branch
+- \`code-checklist\` — produce a manual-verification checklist for the current branch
+- \`code-changelog\` — draft a plain-language changelog of what the current branch ships
 
 Each is a plain markdown file. Edit it freely; the installer never overwrites
 an existing skill on re-run.

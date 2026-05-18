@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Use when explicitly asked to review code."
+description: "Use when explicitly asked to review code on the current branch."
 ---
 
 # Code Review
@@ -108,10 +108,10 @@ Review dimensions:
 Save to:
 
 ```bash
-llm-notes/<branch-name>_code-review_<YYYYMMDD-HHMM>.md
+.agent-notes/reviews/<sanitised-branch>_<YYYY-MM-DD-HHMM>.md
 ```
 
-Create the `llm-notes/` directory if it does not exist. Replace any `/` in the branch name with `-` so the path stays flat (e.g. `feat/bulk-delete` becomes `feat-bulk-delete`).
+Create `.agent-notes/reviews/` if it does not exist. Replace any `/` in the branch name with `-` so it stays a single path segment (e.g. `feat/bulk-delete` becomes `feat-bulk-delete`).
 
 The file is meant to be handed off to another agent for action, so it starts with a single **AI Prompt** that frames the whole review. This is more reliable than per-finding prompts: it forces the downstream agent to validate before fixing, and to push back instead of silently dropping invalid findings. Keep this prompt as written — it is doing real work.
 
@@ -179,10 +179,6 @@ Use this format:
 | Lint  | pass / fail / skipped |
 | Types | pass / fail / skipped |
 | Tests | pass / fail / skipped |
-
-## Changelog Notes
-
-Plain-language bullet points summarising what this PR does and why. Write as if briefing a colleague in Slack. Skip trivial changes. Ready to copy-paste.
 ````
 
 ---
@@ -216,7 +212,7 @@ After saving the file, post a concise summary directly in the chat. Do not repea
 
 Lint: pass | Types: pass | Tests: fail (reason)
 
-Full review saved to: llm-notes/<filename>.md
+Full review saved to: .agent-notes/reviews/<filename>.md
 ```
 
 If there are no blockers or warnings, the summary can be a single short paragraph confirming the change looks good.

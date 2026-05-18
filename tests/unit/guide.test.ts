@@ -53,7 +53,8 @@ describe("buildGuideMd", () => {
     expect(md).toContain("## Edit Claude skills");
     expect(md).toContain("code-review");
     expect(md).toContain("code-simplify");
-    expect(md).toContain("code-manual-tests");
+    expect(md).toContain("code-checklist");
+    expect(md).toContain("code-changelog");
   });
 
   test("git permissions section reflects current mode and policy", () => {

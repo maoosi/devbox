@@ -157,7 +157,7 @@ Run any fast safety checks the project provides. Read `package.json` for `lint`,
 
 ## Step 7: Post a Chat Summary
 
-No `llm-notes/` file. Post a concise summary directly in the chat. Format:
+No file output. Post a concise summary directly in the chat. Format:
 
 ```markdown
 ## Simplify Summary: [branch] -> [base]

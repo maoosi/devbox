@@ -1,9 +1,9 @@
 ---
-name: code-manual-tests
-description: "Use when explicitly asked to produce a manual-test checklist for the current branch."
+name: code-checklist
+description: "Use when explicitly asked to produce a manual-verification checklist for the current branch."
 ---
 
-# Code Manual Tests
+# Code Checklist
 
 You are a senior engineer producing a focused manual-test checklist for the changes on the current branch. The deliverable is a short markdown checklist of the **core use cases** a human should exercise in the running app to verify the change works.
 
@@ -111,12 +111,12 @@ If there is no PR or no test plan in the body, skip this step.
 Save to:
 
 ```bash
-llm-notes/<sanitised-branch>_code-manual-tests_<YYYYMMDD-HHMM>.md
+.agent-notes/testing/<sanitised-branch>_<YYYY-MM-DD-HHMM>.md
 ```
 
-Sanitise the branch name first: replace `/` with `-` so the filename doesn't accidentally try to create subdirectories. E.g. `feat/audio-fix` becomes `feat-audio-fix`.
+Sanitise the branch name first: replace `/` with `-` so it stays a single path segment. E.g. `feat/audio-fix` becomes `feat-audio-fix`.
 
-Create the `llm-notes/` directory if it does not exist.
+Create `.agent-notes/testing/` if it does not exist.
 
 Format:
 
@@ -143,6 +143,25 @@ The short label is a 2-4 word handle for the test — easy to reference in a sta
 
 Default to a single list. Only split the checklist into multiple `##` sections if the PR genuinely spans several unrelated areas (e.g. an infra change bundled with a feature, or a sweep across many subsystems). For most PRs — even ones with 10+ items — a single list reads better than artificial grouping.
 
+**Language and tone.** Write each bullet like a working developer briefing a teammate, not like a QA document. Direct, natural, slightly clipped.
+
+Keep:
+
+- Plain words. Short sentences. Concrete actions.
+- Imperatives for the description ("Click Save", "Hit the endpoint with…"), specifics for the expected ("rate persists after reload", "returns 200 with the new id").
+
+Strip:
+
+- Em-dashes (`—`). Use a comma or a period.
+- Semicolons (`;`). Split into two sentences.
+- Possessive apostrophes (`'s`). Rephrase. "The user's session" becomes "the session for the user". Models over-use possessives in a way that makes prose feel polished and stiff. Forcing the rephrase produces blunter, more natural text.
+- Marketing or QA-formal language, hedges, filler ("simply", "just", "comprehensively", "ensure", "verify that", "leverage").
+- Restating what the short label already says inside the description.
+
+Real testers write `Click "Save", confirm the rate persists after reload` rather than `The user should click the Save button in order to verify that the rate value persists upon reload of the page`. Both are accurate. Only one sounds like a person.
+
+If a bullet still feels long or formal after rewriting, rewrite it again or split it in two. Cut filler, not signal — these bullets are the deliverable.
+
 If the diff is purely internal, the checklist section is empty and the Notes section explains why in one line.
 
 ---
@@ -157,7 +176,7 @@ After saving the file, post the same checklist directly in the chat for fast sca
 - [ ] **<short label>:** <description>. Expected: <expected>.
 - [ ] **<short label>:** <description>. Expected: <expected>.
 
-Saved to: llm-notes/<filename>.md
+Saved to: .agent-notes/testing/<filename>.md
 ```
 
 If the checklist is empty, post a single short paragraph explaining the diff is internal and no manual verification is needed.

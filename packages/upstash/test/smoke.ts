@@ -2,6 +2,8 @@ import { Box } from '@upstash/box';
 import { agentBrowser, bun, command, devbox, doppler, infisical, pnpm, yarn } from '../src/index';
 import { resolveConfig } from '../src/config';
 import { provisionBox } from '../src/provision';
+import { fetchPatch } from '../src/commands/pull';
+import { BoxExecutor } from '../src/executor';
 import { ENV_PREAMBLE, shellQuote } from '@devbox/core';
 
 // ── Dummy app credentials — never real. The only real value needed is the
@@ -134,6 +136,19 @@ async function runAssertions(box: Box) {
 
   // Idempotency (provisionBox was run twice) → exactly one bashrc source line
   await check(box, 'idempotency: single devbox/env source line', `test "$(grep -c 'devbox/env' "$HOME/.bashrc")" = "1" && echo OK`, { contains: 'OK' });
+
+  // pull: patch extraction over the real exec channel (unit tests cover the
+  // git mechanics locally; this covers the Run.result transport + markers).
+  // Runs last — it dirties the workdir, then restores it.
+  await sh(box, `cd ${WORKDIR} && echo smoke-pull-change >> package.json && echo pulled > pull-new.txt`);
+  const patch = await fetchPatch(new BoxExecutor(box), WORKDIR);
+  checks.push({
+    label: 'pull: patch captures box changes',
+    ok: patch.includes('pull-new.txt') && patch.includes('smoke-pull-change'),
+    detail: `${patch.length} bytes`,
+  });
+  console.log(`${patch.includes('pull-new.txt') ? '✓' : '✗'} pull: patch captures box changes`);
+  await sh(box, `cd ${WORKDIR} && git checkout -q -- package.json && rm -f pull-new.txt`);
 }
 
 async function main() {

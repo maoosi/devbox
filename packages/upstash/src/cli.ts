@@ -7,6 +7,7 @@ import info from './commands/info';
 import ssh from './commands/ssh';
 import exec from './commands/exec';
 import open from './commands/open';
+import pull from './commands/pull';
 import url from './commands/url';
 import del from './commands/delete';
 import list from './commands/list';
@@ -22,6 +23,7 @@ const COMMANDS: Record<string, (argv: string[]) => Promise<number>> = {
   ssh,
   exec,
   open,
+  pull,
   url,
   delete: del,
   list,

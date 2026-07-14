@@ -13,6 +13,8 @@ Daily workflow
   info <ws>                  Show status, SSH command, public URLs, branch, age
   ssh <ws>                   SSH into the workspace
   exec <ws> -- <cmd...>      Run a command in the workspace without SSH
+  pull <ws> [--stat]         Apply the workspace's uncommitted changes to the local
+                             checkout as a git patch (--stat to preview only)
   open <ws> [--editor E]     Open in your editor (zed | code)
   url <ws> <port>            Create a public URL for a port (opens browser when in a TTY)
   delete <ws>                Delete the workspace

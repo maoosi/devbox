@@ -77,13 +77,15 @@ The bundled Claude Code skills (`code-review`, `code-simplify`, `code-checklist`
 devbox init                      # create + provision the base box, SSH in
 devbox snapshot                  # freeze the base box as the base snapshot
 
-devbox create 1234 --branch PR-1234   # workspace from the snapshot (idempotent)
+devbox create fix-auth --branch fix/auth   # workspace from the snapshot (idempotent)
 devbox list                      # name, status, branch, age
-devbox ssh 1234                  # interactive shell
-devbox exec 1234 -- bun test     # run a command, exit code propagated
-devbox open 1234                 # open in zed / code (--editor to override)
-devbox url 1234 5173             # public URL for a port (pipe-safe: | pbcopy)
-devbox delete 1234               # remove the workspace
+devbox ssh fix-auth              # interactive shell
+devbox exec fix-auth -- bun test # run a command, exit code propagated
+devbox pull fix-auth             # apply the box's uncommitted changes to this
+                                 # checkout as a git patch (--stat to preview)
+devbox open fix-auth             # open in zed / code (--editor to override)
+devbox url fix-auth 5173         # public URL for a port (pipe-safe: | pbcopy)
+devbox delete fix-auth           # remove the workspace
 
 devbox doctor                    # diagnose config, credentials, CLIs, remote state
 devbox reset                     # delete snapshot + all project boxes (confirms)
@@ -107,3 +109,4 @@ UPSTASH_BOX_API_KEY=... bun run test:smoke # creates a throwaway box, provisions
 
 - Secret tokens and the git remote URL are baked into the base snapshot. After rotating tokens or changing `devbox.ts`, run `devbox init` then `devbox snapshot --force`; existing workspaces keep the old values.
 - The base box is kept (paused) after `devbox snapshot` — it's how the snapshot is rediscovered without local state.
+- `devbox pull` covers **uncommitted** changes in the workspace (including new files, `.gitignore` respected) — the natural companion to `mode: 'read-only'`, where the box can't push. Nothing is committed locally; review and commit yourself. Changes already committed on the box aren't included — push those from the box (write mode) instead.

@@ -1,0 +1,33 @@
+name: smoke-ubuntu
+
+# Manual-only. Runs the full ubuntu installer end-to-end inside Docker
+# (fresh install + rerun idempotency per scenario) and takes several minutes
+# per scenario; gate it behind workflow_dispatch so CI minutes don't get
+# burned on every push. Run via the Actions tab → "smoke-ubuntu"
+# → "Run workflow", or `gh workflow run smoke-ubuntu`.
+#
+# Cheap checks (typecheck + unit tests) run on every push in ci.yml.
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [s1-minimal, s2-doppler, s3-infisical-max]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke scenario ${{ matrix.scenario }}
+        run: packages/ubuntu/tests/smoke/run-scenario.sh ${{ matrix.scenario }}
+
+  # Curl-mode pass: exercises install.sh's tarball-fetch code path (the
+  # production install) against a locally-built tarball, catching drift where
+  # a needed file is missing from the selective extraction globs.
+  smoke-curl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run s1-minimal (curl mode)
+        run: packages/ubuntu/tests/smoke/run-scenario.sh s1-minimal curl

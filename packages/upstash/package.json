@@ -1,0 +1,20 @@
+{
+  "name": "@devbox/upstash",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "devbox": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test:smoke": "bun test/smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@devbox/core": "workspace:*",
+    "@upstash/box": "^0.5.3"
+  }
+}

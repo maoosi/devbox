@@ -1,59 +1,48 @@
 # 👾📦 Devbox
 
-**Per-project devbox for running AI agents safely on any fresh Ubuntu ARM64 machine.**
+**Per-project development environments for running AI agents safely — one repo, one box, scoped tokens, guardrails on by default.**
 
-## 🚀 Quick start
+Two flavors, one set of provisioning primitives:
 
-On a fresh Ubuntu machine, open a shell as a regular user (not root) and run:
+| 📦 | ✨ |
+| --- | --- |
+| [`packages/upstash`](packages/upstash) | Local `devbox` CLI that provisions disposable remote workspaces on [Upstash Box](https://upstash.com/docs/box), driven by a `devbox.ts` config. |
+| [`packages/ubuntu`](packages/ubuntu) | One-line interactive installer that turns any fresh Ubuntu ARM64 machine (e.g. an Orbstack VM) into a devbox. |
+| [`packages/core`](packages/core) | Shared primitives: an `Executor` shell transport plus the setup modules and content generators both flavors run. |
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/maoosi/devbox/main/install.sh | bash
+## 🚀 Install
+
+Remote workspaces on Upstash Box (from your Mac/laptop):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/maoosi/devbox/main/packages/upstash/install.sh | bash
 ```
 
-The installer asks for the repo URL, picks a secrets manager, and walks you through pasting scoped tokens. At the end it prints the command to reconnect.
+Local Ubuntu machine / VM (run on the machine itself):
 
-## 🖥️ Recommended host: Orbstack on Mac
+```sh
+curl -fsSL https://raw.githubusercontent.com/maoosi/devbox/main/packages/ubuntu/install.sh | bash
+```
 
-Devbox runs on any Ubuntu machine, but the cleanest setup is one Orbstack VM per repo on a Mac:
+See each package's README for the full guide.
 
-- In the **Orbstack app**, create a new machine: Ubuntu, latest, arm64, name `devbox-<project>`, **Isolate machine**, **Network Isolation**.
-- Open its shell, run the install command above.
-- Reconnect later with `ssh devbox-<project>@orb`, then `cd ~/<project>` (the clone folder is named after the repo).
+## ✅ What you get (both flavors)
 
-Plain SSH or any other Linux host works too — the install steps are identical.
-
-## ✅ What you get
-
-### Default
+Everything below ships from [`@devbox/core`](packages/core) and applies whether the devbox is an Ubuntu machine or an Upstash box:
 
 | ✨                          | 📦                                                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Per-project isolation**   | one Ubuntu machine per repo, so clone, PAT, and secrets stay scoped to that single project              |
-| **Fresh Ubuntu bootstrap**  | starts from a clean Ubuntu host and sets up the devbox in one install flow                              |
-| **Git safety mode**         | read-only or write, chosen at install; write mode enforced by a `pre-push` hook                         |
-| **Agent guardrails**        | deny rules for risky commands like `git push --force`, `git reset --hard`, `npm publish`, …             |
-| **Supply chain defaults**   | `npm`/`pnpm`/`yarn`/`pip`/`uv`/`cargo` aliased through Socket Firewall; `ignoreScripts = true` globally |
-| **Agent workflow defaults** | writes project-scoped `~/AGENTS.md` conventions and wires a GitHub MCP server                           |
-| **Core runtimes**           | Bun, Node LTS (via fnm), pnpm                                                                           |
-| **GitHub tooling**          | `gh` CLI with a repo-scoped fine-grained token flow                                                     |
+| **Per-project isolation**   | one devbox per repo, so clone, PAT, and secrets stay scoped to that single project                      |
+| **Git safety mode**         | read-only or write, with a granular write policy (direct-push-to-main, branch deletion) enforced by `pre-push` / `pre-merge-commit` hooks |
+| **Agent guardrails**        | Claude Code deny rules for risky commands like `git push --force`, `git reset --hard`, `npm publish`, … |
+| **Supply chain defaults**   | `npm`/`pnpm`/`yarn`/`pip`/`uv`/`cargo` wrapped through Socket Firewall; `ignoreScripts = true` globally |
+| **Agent workflow defaults** | project-scoped `~/AGENTS.md` conventions (12 default rules) and a GitHub MCP server                     |
+| **Bundled skills**          | `code-review`, `code-simplify`, `code-checklist`, `code-changelog` in `~/.claude/skills/`               |
+| **Core toolchain**          | Bun, Node LTS (via fnm, repo-pinned versions win), pnpm + yarn (via corepack)                           |
+| **Agent tools (optional)**  | `agent-browser` (headless browser) and Vite+ — a prompt on Ubuntu, `agentBrowser()` / `vitePlus()` toolchain items on Upstash |
+| **Secrets managers**        | Doppler or Infisical CLI with a read-only project-scoped token                                          |
 
-### Optional
-
-| ✨                  | 📦                                                       |
-| ------------------- | -------------------------------------------------------- |
-| **Agent CLIs**      | Claude Code                                              |
-| **Agent tools**     | `agent-browser`, extra skills                            |
-| **Dev tools**       | Vite+                                                    |
-| **Secrets manager** | Doppler or Infisical (one project, read-only token flow) |
-
-## 🧪 Dry run
-
-```bash
-bun install
-bun src/cli.ts --dry-run
-```
-
-Walks the prompts and prints every command/file the installer would run, without touching your system.
+Each flavor adds its own extras on top — the Ubuntu installer ships the `gh` PAT flow and Claude Code install; the Upstash CLI adds snapshots, throwaway workspaces, editor deep-links, and public URLs.
 
 ## ⚠️ Known gaps
 
@@ -61,3 +50,17 @@ Walks the prompts and prints every command/file the installer would run, without
 - `ignore-scripts=true` breaks packages that legitimately need scripts (`sharp`, `puppeteer`, …). Per-package escape: `pnpm install --ignore-scripts=false <pkg>`.
 - If `socket.dev` is unreachable, `sfw` fails closed. Emergency bypass: `command pnpm install …` (or `command npm install …`) skips the wrapper for one invocation.
 - `sfw` only scans install-like subcommands. Runtime commands (`pnpm run`, `cargo build`, `npx`) bypass it so tools they spawn (Doppler, `gh`) hit the network directly.
+
+## 🛠️ Development
+
+Bun workspace — install once at the root:
+
+```sh
+bun install
+bun run typecheck            # tsc across all packages
+bun test                     # unit tests (core + ubuntu + upstash)
+bun run test:smoke:ubuntu    # full installer inside Docker (all scenarios)
+UPSTASH_BOX_API_KEY=... bun run test:smoke:upstash   # provisions a real box
+```
+
+Both flavors keep their own UX (interactive wizard vs config file) and their own transports (local bash vs Upstash Box exec); everything that provisions a dev environment lives in `@devbox/core`, typed against the `Executor` interface.
